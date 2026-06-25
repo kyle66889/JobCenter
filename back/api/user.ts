@@ -2,6 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { Logger } from 'winston';
 import UserService from '../services/user';
+import RbacService from '../services/rbac';
+import { UserModel } from '../data/user';
 import { celebrate, Joi } from 'celebrate';
 import multer from 'multer';
 import path from 'path';
@@ -81,8 +83,53 @@ export default (app: Router) => {
         }
         const userService = Container.get(UserService);
         await userService.updateUsernameAndPassword(req.body);
+
+        // 同步当前用户的 Users 表行（登录已改为查 Users 表）
+        const userId = (req as any).auth?.userId as number | undefined;
+        if (userId) {
+          const rbac = Container.get(RbacService);
+          const newUsername = req.body.username;
+          const newPassword = req.body.password;
+          if (newUsername) {
+            await UserModel.update(
+              { username: newUsername },
+              { where: { id: userId } },
+            );
+          }
+          if (newPassword) {
+            await rbac.resetPassword(userId, newPassword);
+          }
+        }
+
         res.send({ code: 200, message: t('更新成功') });
       } catch (e) {
+        return next(e);
+      }
+    },
+  );
+
+  route.put(
+    '/password',
+    celebrate({
+      body: Joi.object({
+        oldPassword: Joi.string().required(),
+        newPassword: Joi.string().min(6).required(),
+      }),
+    }),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      try {
+        const userId = (req as any).auth?.userId as number;
+        const rbac = Container.get(RbacService);
+        const user = await rbac.findUserById(userId);
+        const bcrypt = (await import('bcryptjs')).default;
+        const ok =
+          user && (await bcrypt.compare(req.body.oldPassword, user.passwordHash || ''));
+        if (!ok) return res.send({ code: 400, message: '原密码不正确' });
+        await rbac.resetPassword(userId, req.body.newPassword);
+        return res.send({ code: 200 });
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
         return next(e);
       }
     },
@@ -93,12 +140,26 @@ export default (app: Router) => {
     try {
       const userService = Container.get(UserService);
       const authInfo = await userService.getAuthInfo();
+      const userId = (req as any).auth?.userId as number | undefined;
+      const rbac = Container.get(RbacService);
+      let isAdmin = false;
+      let pages: string[] = [];
+      let nickname = authInfo.username;
+      if (userId) {
+        const u = await rbac.findUserById(userId);
+        if (u) nickname = u.nickname || u.username || authInfo.username;
+        isAdmin = await rbac.isAdmin(userId);
+        pages = await rbac.effectivePages(userId);
+      }
       res.send({
         code: 200,
         data: {
           username: authInfo.username,
+          nickname,
           avatar: authInfo.avatar,
           twoFactorActivated: authInfo.twoFactorActivated,
+          isAdmin,
+          pages,
         },
       });
     } catch (e) {
