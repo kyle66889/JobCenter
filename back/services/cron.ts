@@ -1,5 +1,8 @@
 import { Service, Inject } from 'typedi';
 import winston from 'winston';
+import NotificationService from './notify';
+import { NotificationMode, NotificationInfo } from '../data/notify';
+import { tailLines } from '../shared/logTail';
 import config from '../config';
 import { Crontab, CrontabModel, CrontabStatus } from '../data/cron';
 import {
@@ -35,6 +38,9 @@ import { isEmpty } from 'lodash';
 
 @Service()
 export default class CronService {
+  @Inject((type) => NotificationService)
+  private notificationService!: NotificationService;
+
   constructor(@Inject('logger') private logger: winston.Logger) { }
 
   private isNodeCron(cron: Crontab) {
@@ -679,6 +685,49 @@ export default class CronService {
               { where: { id } },
             );
           }
+          // 任务专属邮件通知：配了 notify_emails 才发，成功失败都发（opt-in）
+          try {
+            const recipients = (cron.notify_emails || '')
+              .split(/[;；]/)
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (recipients.length) {
+              const ok = code === 0;
+              const durationSec = finishedAt - startedAt;
+              const name = cron.name || `#${cron.id}`;
+              const title = `${ok ? '✅' : '❌'} [${name}] ${
+                ok ? '执行成功' : '执行失败'
+              }`;
+              let tail = '';
+              try {
+                const logContent = await fs.readFile(absolutePath, 'utf-8');
+                tail = tailLines(logContent, 50);
+              } catch (e) {
+                this.logger.warn('任务邮件通知读日志失败: %o', e);
+              }
+              const summary =
+                `任务：${name}\n` +
+                `状态：${ok ? '成功' : '失败'}（退出码 ${code}）\n` +
+                `耗时：${durationSec}s\n` +
+                `完成时间：${dayjs(finishedAt * 1000).format(
+                  'YYYY-MM-DD HH:mm:ss',
+                )}`;
+              const content = tail
+                ? `${summary}\n\n—— 日志末尾 50 行 ——\n${tail}`
+                : summary;
+              this.notificationService
+                .notify(title, content, {
+                  type: NotificationMode.email,
+                  emailTo: recipients.join(';'),
+                } as unknown as NotificationInfo)
+                .catch((e) =>
+                  this.logger.error('任务邮件通知发送失败: %o', e),
+                );
+            }
+          } catch (e) {
+            this.logger.error('任务邮件通知异常: %o', e);
+          }
+
           resolve({ ...params, pid: cp.pid, code });
         });
       });
