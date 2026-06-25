@@ -81,24 +81,26 @@ export default (app: Router) => {
         if (isDemoEnv()) {
           return res.send({ code: 450, message: t('未知错误') });
         }
-        const userService = Container.get(UserService);
-        await userService.updateUsernameAndPassword(req.body);
-
-        // 同步当前用户的 Users 表行（登录已改为查 Users 表）
+        // 自助改用户名/密码：只改本人 Users 表行，不再写全局共享 authInfo
+        // （否则任一用户的修改会污染全局，且多用户下语义错误）
         const userId = (req as any).auth?.userId as number | undefined;
-        if (userId) {
-          const rbac = Container.get(RbacService);
-          const newUsername = req.body.username;
-          const newPassword = req.body.password;
-          if (newUsername) {
-            await UserModel.update(
-              { username: newUsername },
-              { where: { id: userId } },
-            );
+        if (!userId) {
+          return res.send({ code: 401, message: t('未知错误') });
+        }
+        const { username, password } = req.body;
+        if (password === 'admin') {
+          return res.send({ code: 400, message: t('密码不能设置为admin') });
+        }
+        const rbac = Container.get(RbacService);
+        if (username) {
+          const existing = await UserModel.findOne({ where: { username } });
+          if (existing && existing.id !== userId) {
+            return res.send({ code: 400, message: t('用户已存在') });
           }
-          if (newPassword) {
-            await rbac.resetPassword(userId, newPassword);
-          }
+          await UserModel.update({ username }, { where: { id: userId } });
+        }
+        if (password) {
+          await rbac.resetPassword(userId, password);
         }
 
         res.send({ code: 200, message: t('更新成功') });
@@ -155,7 +157,7 @@ export default (app: Router) => {
         data: {
           username: u?.username || authInfo.username,
           nickname: u?.nickname || u?.username || authInfo.username,
-          avatar: authInfo.avatar,
+          avatar: u?.avatar || authInfo.avatar,
           twoFactorActivated: u
             ? u.twoFactorActivated === 1
             : authInfo.twoFactorActivated,
@@ -319,8 +321,19 @@ export default (app: Router) => {
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
+        const filename = req.file!.filename;
+        const userId = (req as any).auth?.userId as number | undefined;
+        // 头像按登录用户存入 Users 表行，而非全局共享 authInfo（否则全员共用一个头像）
+        if (userId) {
+          await UserModel.update({ avatar: filename }, { where: { id: userId } });
+          return res.send({
+            code: 200,
+            data: filename,
+            message: t('更新成功'),
+          });
+        }
         const userService = Container.get(UserService);
-        const result = await userService.updateAvatar(req.file!.filename);
+        const result = await userService.updateAvatar(filename);
         res.send(result);
       } catch (e) {
         return next(e);

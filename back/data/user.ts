@@ -11,6 +11,7 @@ export class User {
   twoFactorSecret?: string;
   twoFactorActivated?: 1 | 0;
   lastLoginAt?: string;
+  avatar?: string;
 
   constructor(options: User) {
     this.id = options.id;
@@ -22,6 +23,7 @@ export class User {
     this.twoFactorSecret = options.twoFactorSecret || '';
     this.twoFactorActivated = options.twoFactorActivated || 0;
     this.lastLoginAt = options.lastLoginAt;
+    this.avatar = options.avatar || '';
   }
 }
 
@@ -35,4 +37,5 @@ export const UserModel = sequelize.define<UserInstance>('User', {
   twoFactorSecret: DataTypes.STRING,
   twoFactorActivated: DataTypes.NUMBER,
   lastLoginAt: DataTypes.STRING,
+  avatar: DataTypes.STRING,
 });

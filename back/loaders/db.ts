@@ -54,6 +54,7 @@ export default async () => {
       { table: 'Crontabs', column: 'work_dir', type: 'VARCHAR(255)' },
       { table: 'Envs', column: 'isPinned', type: 'NUMBER' },
       { table: 'Envs', column: 'labels', type: 'JSON' },
+      { table: 'Users', column: 'avatar', type: 'VARCHAR(255)' },
     ];
 
     for (const migration of migrations) {
