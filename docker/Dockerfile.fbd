@@ -1,5 +1,5 @@
-# FBD Job Center —— 基于官方青龙镜像的薄层覆盖，仅做品牌名替换。
-# 把前端英文 UI 里的 i18n 词条 "Qinglong" 改成 "FBD Job Center"
+# FBD Center —— 基于官方青龙镜像的薄层覆盖，仅做品牌名替换。
+# 把前端英文 UI 里的 i18n 词条 "Qinglong" 改成 "FBD Center"
 # （侧边栏标题、登录页、关于页等所有引用该词条处一并生效）。
 #
 # 用纯 ASCII 的「值位」模式 :"Qinglong" 精确命中 i18n 独立词条，
@@ -10,4 +10,4 @@
 # 升级官方镜像：docker compose build --pull && docker compose up -d
 FROM whyour/qinglong:latest
 
-RUN sed -i 's/:"Qinglong"/:"FBD Job Center"/g' /ql/static/dist/umi.*.js
+RUN sed -i 's/:"Qinglong"/:"FBD Center"/g' /ql/static/dist/umi.*.js
