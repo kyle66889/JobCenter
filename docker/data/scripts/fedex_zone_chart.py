@@ -37,6 +37,8 @@ STATE_FILE = os.path.join(SAVE_DIR, ".zone_chart_state.json")
 _opener = build_opener(HTTPCookieProcessor(CookieJar()))
 
 
+
+
 def log(msg):
     print(msg, flush=True)
 
