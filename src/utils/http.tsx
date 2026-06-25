@@ -48,7 +48,11 @@ const errorHandler = function (
       history.push('/error');
     } else if (responseStatus === 401) {
       if (history.location.pathname !== '/login') {
-        message.error(intl.get('登录已过期，请重新登录'));
+        // 仅在"确实登录过(本地有 token)"时提示已过期；从未登录(无 token)则静默跳登录页，
+        // 避免未登录直接访问主页时误报"登录已过期"
+        if (localStorage.getItem(config.authKey)) {
+          message.error(intl.get('登录已过期，请重新登录'));
+        }
         localStorage.removeItem(config.authKey);
         history.push('/login');
       }
