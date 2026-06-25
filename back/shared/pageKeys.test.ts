@@ -5,6 +5,7 @@ import {
   resolvePageKey,
   isAdminOnlyPath,
   computeEffectivePages,
+  assertNotLastAdmin,
 } from './pageKeys';
 
 test('PAGE_KEYS 覆盖 9 个页面', () => {
@@ -37,4 +38,13 @@ test('computeEffectivePages 求角色 pageKey 并集去重', () => {
     computeEffectivePages([['dashboard', 'crons'], ['crons', 'logs']]),
     ['dashboard', 'crons', 'logs'],
   );
+});
+
+test('删/停最后一个 Admin 抛错', () => {
+  assert.throws(() => assertNotLastAdmin(0, 'delete'));
+  assert.throws(() => assertNotLastAdmin(0, 'disable'));
+});
+
+test('还有其他 Admin 时放行', () => {
+  assert.doesNotThrow(() => assertNotLastAdmin(2, 'delete'));
 });

@@ -43,3 +43,13 @@ export function computeEffectivePages(rolePages: string[][]): string[] {
   for (const pages of rolePages) for (const k of pages) set.add(k);
   return Array.from(set);
 }
+
+// remainingAdminCount = 执行该操作后剩余的有效 Admin 数；< 1 则拒绝
+export function assertNotLastAdmin(
+  remainingAdminCount: number,
+  action: 'delete' | 'disable' | 'demote',
+): void {
+  if (remainingAdminCount < 1) {
+    throw new Error(`操作被拒绝：系统必须至少保留一个启用的 Admin（${action}）`);
+  }
+}
