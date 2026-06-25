@@ -470,7 +470,7 @@ export default class CronService {
     let order = [
       ['isPinned', 'DESC'],
       ['isDisabled', 'ASC'],
-      ['status', 'ASC'],
+      // 不按 status 排序：运行中的任务不再跳到顶部、跑完又掉回去（保持稳定顺序）
       ['createdAt', 'DESC'],
     ];
 
