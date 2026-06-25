@@ -259,6 +259,32 @@ export default function () {
     <ProLayout
       selectedKeys={[location.pathname]}
       loading={loading}
+      menuDataRender={(menuData: any[]) => {
+        // RBAC：按当前用户有效 pageKey 过滤菜单（Admin 全显，未映射项保留）
+        const pathToPageKey: Record<string, string> = {
+          '/dashboard': 'dashboard',
+          '/crontab': 'crons',
+          '/subscription': 'subscriptions',
+          '/env': 'envs',
+          '/config': 'configs',
+          '/script': 'scripts',
+          '/dependence': 'dependencies',
+          '/log': 'logs',
+          '/setting': 'settings',
+        };
+        if (user?.isAdmin) return menuData;
+        const pages: string[] = user?.pages || [];
+        const filterFn = (items: any[]): any[] =>
+          items
+            .filter((it) => {
+              const key = pathToPageKey[it.path];
+              return !key || pages.includes(key);
+            })
+            .map((it) =>
+              it.children ? { ...it, children: filterFn(it.children) } : it,
+            );
+        return filterFn(menuData);
+      }}
       logo={
         <>
           <Image preview={false} src="https://qn.whyour.cn/logo.png" />

@@ -35,6 +35,8 @@ import './index.less';
 import useResizeObserver from '@react-hook/resize-observer';
 import SystemLog from './systemLog';
 import Dependence from './dependence';
+import UserManage from './userManage';
+import RoleManage from './roleManage';
 
 const { Text } = Typography;
 const isDemoEnv = window.__ENV__DeployEnv === 'demo';
@@ -311,6 +313,20 @@ const Setting = () => {
                     children: (
                       <SecuritySettings user={user} userChange={reloadUser} />
                     ),
+                  },
+                ]
+              : []),
+            ...(user?.isAdmin
+              ? [
+                  {
+                    key: 'userManage',
+                    label: '用户管理',
+                    children: <UserManage />,
+                  },
+                  {
+                    key: 'roleManage',
+                    label: '角色管理',
+                    children: <RoleManage />,
                   },
                 ]
               : []),
