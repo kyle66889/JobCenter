@@ -10,4 +10,6 @@
 # 升级官方镜像：docker compose build --pull && docker compose up -d
 FROM whyour/qinglong:latest
 
-RUN sed -i 's/:"Qinglong"/:"FBD Center"/g' /ql/static/dist/umi.*.js
+RUN sed -i 's/:"Qinglong"/:"FBD Center"/g' /ql/static/dist/umi.*.js \
+ && sed -i 's/siderWidth:180/siderWidth:260/g' /ql/static/dist/layouts__index.*.async.js \
+ && sed -i 's/\.title{display:flex;/.title{display:flex;white-space:nowrap;/g' /ql/static/dist/layouts__index.*.chunk.css
