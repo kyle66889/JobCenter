@@ -432,7 +432,7 @@ export default class NotificationService {
           roomName: `${aibotkName}`,
           message: {
             type: 1,
-            content: `【${t('青龙快讯')}】\n\n${this.title}\n${this.content}`,
+            content: `【FBD快讯】\n\n${this.title}\n${this.content}`,
           },
         };
         break;
@@ -443,7 +443,7 @@ export default class NotificationService {
           name: `${aibotkName}`,
           message: {
             type: 1,
-            content: `【${t('青龙快讯')}】\n\n${this.title}\n${this.content}`,
+            content: `【FBD快讯】\n\n${this.title}\n${this.content}`,
           },
         };
         break;
@@ -613,7 +613,7 @@ export default class NotificationService {
       });
 
       const info = await transporter.sendMail({
-        from: `"${t('青龙快讯')}" <${emailUser}>`,
+        from: `"FBD快讯" <${emailUser}>`,
         to: recipients,
         subject: `${this.title}`,
         html: `${this.content.replace(/\n/g, '<br/>')}`,

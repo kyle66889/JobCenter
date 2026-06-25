@@ -26,6 +26,8 @@ import pickBy from 'lodash/pickBy';
 import isNil from 'lodash/isNil';
 import { shareStore } from '../shared/store';
 import { t, tf } from '../shared/i18n';
+import bcrypt from 'bcryptjs';
+import { UserModel } from '../data/user';
 
 @Service()
 export default class UserService {
@@ -50,16 +52,21 @@ export default class UserService {
     const content = await this.getAuthInfo();
     const timestamp = Date.now();
     let {
-      username: cUsername,
-      password: cPassword,
       retries = 0,
       lastlogon,
       lastip,
       lastaddr,
-      twoFactorActivated,
       tokens = {},
       platform,
     } = content;
+
+    const userRow = await UserModel.findOne({ where: { username } });
+    const passwordOk =
+      !!userRow &&
+      userRow.isActive === 1 &&
+      (await bcrypt.compare(password, userRow.passwordHash || ''));
+    const twoFactorActivated = userRow?.twoFactorActivated === 1;
+
     const retriesTime = Math.pow(3, retries) * 1000;
     if (retries > 2 && timestamp - lastlogon < retriesTime) {
       const waitTime = Math.ceil(
@@ -72,12 +79,7 @@ export default class UserService {
       };
     }
 
-    if (
-      username === cUsername &&
-      password === cPassword &&
-      twoFactorActivated &&
-      needTwoFactor
-    ) {
+    if (passwordOk && twoFactorActivated && needTwoFactor) {
       await this.updateAuthInfo(content, {
         isTwoFactorChecking: true,
       });
@@ -95,10 +97,10 @@ export default class UserService {
       const { country, province, city, isp } = ipAddress;
       address = uniq([country, province, city, isp]).filter(Boolean).join(' ');
     }
-    if (username === cUsername && password === cPassword) {
+    if (passwordOk) {
       const data = createRandomString(50, 100);
       const expiration = twoFactorActivated ? '60d' : '20d';
-      let token = jwt.sign({ data }, config.jwt.secret, {
+      let token = jwt.sign({ data, userId: userRow!.id }, config.jwt.secret, {
         expiresIn: config.jwt.expiresIn || expiration,
         algorithm: 'HS384',
       });
@@ -127,21 +129,11 @@ export default class UserService {
         platform: req.platform,
         isTwoFactorChecking: false,
       });
-      this.notificationService.notify(
-        t('登录通知'),
-        t('你于') +
-          dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss') +
-          t('在') +
-          address +
-          ' ' +
-          req.platform +
-          t('端') +
-          ' ' +
-          t('登录成功') +
-          t('，ip地址') +
-          ' ' +
-          ip,
+      await UserModel.update(
+        { lastLoginAt: String(timestamp) },
+        { where: { id: userRow!.id } },
       );
+      // 登录成功不再推送通知（仅保留登录日志）；失败登录仍会告警
       await this.insertDb({
         type: AuthDataType.loginLog,
         info: {
@@ -172,21 +164,7 @@ export default class UserService {
         lastaddr: address,
         platform: req.platform,
       });
-      this.notificationService.notify(
-        t('登录通知'),
-        t('你于') +
-          dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss') +
-          t('在') +
-          address +
-          ' ' +
-          req.platform +
-          t('端') +
-          ' ' +
-          t('登录失败') +
-          t('，ip地址') +
-          ' ' +
-          ip,
-      );
+      // 登录失败也不再推送通知（仅保留登录日志）
       await this.insertDb({
         type: AuthDataType.loginLog,
         info: {
@@ -319,13 +297,14 @@ export default class UserService {
     req: any,
   ) {
     const authInfo = await this.getAuthInfo();
-    const { isTwoFactorChecking, twoFactorSecret } = authInfo;
+    const { isTwoFactorChecking } = authInfo;
     if (!isTwoFactorChecking) {
       return { code: 450, message: t('未知错误') };
     }
+    const userRow = await UserModel.findOne({ where: { username } });
     const isValid = authenticator.verify({
       token: code,
-      secret: twoFactorSecret,
+      secret: userRow?.twoFactorSecret || '',
     });
     if (isValid) {
       return this.login({ username, password }, req, false);

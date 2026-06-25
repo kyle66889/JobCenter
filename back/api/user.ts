@@ -2,6 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { Logger } from 'winston';
 import UserService from '../services/user';
+import RbacService from '../services/rbac';
+import { UserModel } from '../data/user';
 import { celebrate, Joi } from 'celebrate';
 import multer from 'multer';
 import path from 'path';
@@ -79,10 +81,57 @@ export default (app: Router) => {
         if (isDemoEnv()) {
           return res.send({ code: 450, message: t('未知错误') });
         }
-        const userService = Container.get(UserService);
-        await userService.updateUsernameAndPassword(req.body);
+        // 自助改用户名/密码：只改本人 Users 表行，不再写全局共享 authInfo
+        // （否则任一用户的修改会污染全局，且多用户下语义错误）
+        const userId = (req as any).auth?.userId as number | undefined;
+        if (!userId) {
+          return res.send({ code: 401, message: t('未知错误') });
+        }
+        const { username, password } = req.body;
+        if (password === 'admin') {
+          return res.send({ code: 400, message: t('密码不能设置为admin') });
+        }
+        const rbac = Container.get(RbacService);
+        if (username) {
+          const existing = await UserModel.findOne({ where: { username } });
+          if (existing && existing.id !== userId) {
+            return res.send({ code: 400, message: t('用户已存在') });
+          }
+          await UserModel.update({ username }, { where: { id: userId } });
+        }
+        if (password) {
+          await rbac.resetPassword(userId, password);
+        }
+
         res.send({ code: 200, message: t('更新成功') });
       } catch (e) {
+        return next(e);
+      }
+    },
+  );
+
+  route.put(
+    '/password',
+    celebrate({
+      body: Joi.object({
+        oldPassword: Joi.string().required(),
+        newPassword: Joi.string().min(6).required(),
+      }),
+    }),
+    async (req: Request, res: Response, next: NextFunction) => {
+      const logger: Logger = Container.get('logger');
+      try {
+        const userId = (req as any).auth?.userId as number;
+        const rbac = Container.get(RbacService);
+        const user = await rbac.findUserById(userId);
+        const bcrypt = (await import('bcryptjs')).default;
+        const ok =
+          user && (await bcrypt.compare(req.body.oldPassword, user.passwordHash || ''));
+        if (!ok) return res.send({ code: 400, message: '原密码不正确' });
+        await rbac.resetPassword(userId, req.body.newPassword);
+        return res.send({ code: 200 });
+      } catch (e) {
+        logger.error('🔥 error: %o', e);
         return next(e);
       }
     },
@@ -93,12 +142,27 @@ export default (app: Router) => {
     try {
       const userService = Container.get(UserService);
       const authInfo = await userService.getAuthInfo();
+      const userId = (req as any).auth?.userId as number | undefined;
+      const rbac = Container.get(RbacService);
+      let isAdmin = false;
+      let pages: string[] = [];
+      // 身份按登录用户(req.auth.userId)取 Users 表，而非全局共享 authInfo（否则任何人都显示 admin）
+      const u = userId ? await rbac.findUserById(userId) : null;
+      if (userId) {
+        isAdmin = await rbac.isAdmin(userId);
+        pages = await rbac.effectivePages(userId);
+      }
       res.send({
         code: 200,
         data: {
-          username: authInfo.username,
-          avatar: authInfo.avatar,
-          twoFactorActivated: authInfo.twoFactorActivated,
+          username: u?.username || authInfo.username,
+          nickname: u?.nickname || u?.username || authInfo.username,
+          avatar: u?.avatar || authInfo.avatar,
+          twoFactorActivated: u
+            ? u.twoFactorActivated === 1
+            : authInfo.twoFactorActivated,
+          isAdmin,
+          pages,
         },
       });
     } catch (e) {
@@ -257,8 +321,19 @@ export default (app: Router) => {
     async (req: Request, res: Response, next: NextFunction) => {
       const logger: Logger = Container.get('logger');
       try {
+        const filename = req.file!.filename;
+        const userId = (req as any).auth?.userId as number | undefined;
+        // 头像按登录用户存入 Users 表行，而非全局共享 authInfo（否则全员共用一个头像）
+        if (userId) {
+          await UserModel.update({ avatar: filename }, { where: { id: userId } });
+          return res.send({
+            code: 200,
+            data: filename,
+            message: t('更新成功'),
+          });
+        }
         const userService = Container.get(UserService);
-        const result = await userService.updateAvatar(req.file!.filename);
+        const result = await userService.updateAvatar(filename);
         res.send(result);
       } catch (e) {
         return next(e);

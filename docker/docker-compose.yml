@@ -1,11 +1,14 @@
 services:
   web:
-    image: whyour/qinglong:latest # 基于 Debian 的版本：whyour/qinglong:debian  
+    build:
+      context: .. # 仓库根（需要本仓库 back/ + src/ 源码参与构建）
+      dockerfile: docker/Dockerfile.fbd # 多阶段：源码编译前端+后端，覆盖官方镜像并带 RBAC
+    image: fbd-job-center:latest # 本地构建的镜像（基础版：whyour/qinglong:latest）
     volumes:
       - ./data:/ql/data
     ports:
       - "5700:5700"
     environment:
-      QlBaseUrl: '/' # 部署路径非必须，以斜杠开头和结尾，比如 /test/
+      QlBaseUrl: '/fbdcenter/' # 部署路径非必须，以斜杠开头和结尾，比如 /test/
       TZ: America/Los_Angeles # 容器时区：太平洋时间（日志时间戳 + 定时任务触发时刻）
     restart: unless-stopped

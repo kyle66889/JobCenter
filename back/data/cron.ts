@@ -24,6 +24,7 @@ export class Crontab {
   log_name?: string;
   allow_multiple_instances?: 1 | 0;
   work_dir?: string;
+  notify_emails?: string;
 
   constructor(options: Crontab) {
     this.name = options.name;
@@ -51,6 +52,7 @@ export class Crontab {
     this.log_name = options.log_name;
     this.allow_multiple_instances = options.allow_multiple_instances || 0;
     this.work_dir = options.work_dir;
+    this.notify_emails = options.notify_emails;
   }
 }
 
@@ -93,4 +95,5 @@ export const CrontabModel = sequelize.define<CronInstance>('Crontab', {
   log_name: DataTypes.STRING,
   allow_multiple_instances: DataTypes.NUMBER,
   work_dir: DataTypes.STRING,
+  notify_emails: DataTypes.STRING,
 });

@@ -1,0 +1,28 @@
+# FBD Center —— 从本仓库源码构建并覆盖官方青龙镜像。
+#
+# 为什么是多阶段覆盖而非官方 docker/Dockerfile：
+# 官方 Dockerfile 会 git clone 上游 qinglong（develop 分支）到镜像里，
+# 不使用本仓库源码，因此无法带上我们的 RBAC 改动。这里改为：
+#   阶段1：在 node:18 容器内从本仓库源码编译前端(umi/max)+后端(tsc)
+#          （宿主 Node 24 与 umi 旧依赖 http_parser 不兼容，故容器内用 18）
+#   阶段2：把编译产物 + 新依赖 bcryptjs 覆盖到官方运行镜像
+#
+# 构建上下文＝仓库根；见根目录 .dockerignore。
+# 用法：docker compose up -d --build
+
+FROM node:18-bullseye AS build
+WORKDIR /app
+RUN npm i -g pnpm@8.3.1
+COPY package.json pnpm-lock.yaml .npmrc ./
+RUN pnpm install
+COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=4096
+RUN npm run build:back && npm run build:front
+
+FROM whyour/qinglong:latest
+# 覆盖后端编译产物（镜像以 node /ql/static/build/app.js 运行后端）
+COPY --from=build /app/static/build/ /ql/static/build/
+# 覆盖前端构建产物
+COPY --from=build /app/static/dist/ /ql/static/dist/
+# 补充新增运行时依赖（官方镜像 node_modules 没有 bcryptjs）
+COPY --from=build /app/node_modules/bcryptjs/ /ql/node_modules/bcryptjs/

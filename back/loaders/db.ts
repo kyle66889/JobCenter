@@ -9,6 +9,10 @@ import { CrontabViewModel } from '../data/cronView';
 import { CrontabStatModel } from '../data/cronStats';
 import { RunningInstanceModel } from '../data/runningInstance';
 import { sequelize } from '../data';
+import { UserModel } from '../data/user';
+import { RoleModel } from '../data/role';
+import { UserRoleModel } from '../data/userRole';
+import { RolePermissionModel } from '../data/rolePermission';
 
 export default async () => {
   try {
@@ -21,6 +25,10 @@ export default async () => {
     await CrontabViewModel.sync();
     await CrontabStatModel.sync();
     await RunningInstanceModel.sync();
+    await UserModel.sync();
+    await RoleModel.sync();
+    await UserRoleModel.sync();
+    await RolePermissionModel.sync();
 
     // 初始化新增字段
     const migrations = [
@@ -46,6 +54,8 @@ export default async () => {
       { table: 'Crontabs', column: 'work_dir', type: 'VARCHAR(255)' },
       { table: 'Envs', column: 'isPinned', type: 'NUMBER' },
       { table: 'Envs', column: 'labels', type: 'JSON' },
+      { table: 'Users', column: 'avatar', type: 'VARCHAR(255)' },
+      { table: 'Crontabs', column: 'notify_emails', type: 'VARCHAR(255)' },
     ];
 
     for (const migration of migrations) {
@@ -57,6 +67,9 @@ export default async () => {
         // Column already exists or other error, continue
       }
     }
+
+    const seedRbac = (await import('../services/auth-seed')).default;
+    await seedRbac();
 
     Logger.info('✌️ DB loaded');
   } catch (error) {

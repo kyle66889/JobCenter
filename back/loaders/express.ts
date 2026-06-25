@@ -12,6 +12,9 @@ import { IKeyvStore, shareStore } from '../shared/store';
 import { isValidToken } from '../shared/auth';
 import path from 'path';
 import { t } from '../shared/i18n';
+import { resolvePageKey, isAdminOnlyPath } from '../shared/pageKeys';
+import RbacService from '../services/rbac';
+import { Container } from 'typedi';
 
 export default ({ app }: { app: Application }) => {
   // Security: Enable strict routing to prevent case-insensitive path bypass
@@ -57,6 +60,10 @@ export default ({ app }: { app: Application }) => {
       secret: config.jwt.secret,
       algorithms: ['HS384'],
     }).unless({
+      // 在 baseUrl(QlBaseUrl) 下，originalUrl 仍带前缀(如 /fbdcenter/api/user)，
+      // 会被 /^(\/(?!api\/).*)$/ 误判为非 API 而跳过 JWT 解码，导致 req.auth.userId 丢失、
+      // RBAC 认成匿名(isAdmin=false)。改用已被 rewrite 去掉前缀的 req.url(/api/user)匹配。
+      useOriginalUrl: false,
       path: [...config.apiWhiteList, /^(\/(?!api\/).*)$/i],
     }),
   );
@@ -108,6 +115,45 @@ export default ({ app }: { app: Application }) => {
 
     const authInfo = await shareStore.getAuthInfo();
     if (isValidToken(authInfo, headerToken, req.platform)) {
+      // token 已确认有效；对 /api/ 叠加 pageKey 实时鉴权
+      if (pathLower.startsWith('/api/')) {
+        // 自助端点（本人信息/改密/登出/通知/2FA/头像等）：任何持有有效 token 的用户都放行，
+        // 不受 pageKey 限制；登出尤其必须对所有人开放。注意 /api/users（用户管理，复数）
+        // 不匹配 '/api/user/'，仍走下方 isAdminOnlyPath 拦截。
+        if (pathLower === '/api/user' || pathLower.startsWith('/api/user/')) {
+          return next();
+        }
+        const userId = (req as any).auth?.userId as number | undefined;
+        if (!userId) {
+          return next(
+            new UnauthorizedError('credentials_required', {
+              message: 'No user in token',
+            }),
+          );
+        }
+        const rbac = Container.get(RbacService);
+        const user = await rbac.findUserById(userId);
+        if (!user || user.isActive !== 1) {
+          return res.status(403).send({ code: 403, message: '账号已禁用或不存在' });
+        }
+        if (await rbac.isAdmin(userId)) {
+          return next(); // Admin 通杀
+        }
+        if (isAdminOnlyPath(req.path)) {
+          return res.status(403).send({ code: 403, message: '需要管理员权限' });
+        }
+        const key = resolvePageKey(req.path);
+        if (!key) {
+          return res.status(403).send({ code: 403, message: '无权访问' });
+        }
+        const pages = await rbac.effectivePages(userId);
+        if (pages.includes(key)) {
+          return next();
+        }
+        return res
+          .status(403)
+          .send({ code: 403, message: `无权访问页面：${key}` });
+      }
       return next();
     }
 

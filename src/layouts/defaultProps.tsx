@@ -90,5 +90,5 @@ export default {
   fixSiderbar: true,
   contentWidth: 'Fixed',
   splitMenus: false,
-  siderWidth: 180,
+  siderWidth: 260,
 } as BasicLayoutProps;

@@ -294,6 +294,15 @@ const CronModal = ({
             )}
           />
         </Form.Item>
+        <Form.Item
+          name="notify_emails"
+          label={intl.get('通知邮箱')}
+          tooltip={intl.get(
+            '任务每次执行完成后，把结果摘要和日志末尾发到这些邮箱；多个用分号分隔，留空则不发。需先在系统设置-通知设置-邮箱里配好 SMTP',
+          )}
+        >
+          <Input placeholder="alice@example.com;bob@example.com" />
+        </Form.Item>
       </Form>
     </Modal>
   );
