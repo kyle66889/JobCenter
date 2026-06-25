@@ -156,7 +156,6 @@ def try_notify(title, content):
     try:
         from notify import send
         send(title, content)
-        log("[通知] 已调用青龙 notify 发送")
     except Exception as e:  # noqa: BLE001  通知失败不应让任务标记为失败
         log(f"[通知] 发送失败（不影响抓取结果）: {e}")
 
