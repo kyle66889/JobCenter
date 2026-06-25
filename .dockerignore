@@ -1,0 +1,11 @@
+# 构建上下文排除（用于 docker/Dockerfile.fbd 从源码构建）
+node_modules
+.git
+.vs
+docker/data
+docker/data.bak
+static/build
+static/dist
+_smoke_build
+_smoke_data
+**/*.log

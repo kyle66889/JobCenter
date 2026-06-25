@@ -1,8 +1,8 @@
 services:
   web:
     build:
-      context: .
-      dockerfile: Dockerfile.fbd # 薄层覆盖官方镜像，把品牌名改成 FBD Job Center
+      context: .. # 仓库根（需要本仓库 back/ + src/ 源码参与构建）
+      dockerfile: docker/Dockerfile.fbd # 多阶段：源码编译前端+后端，覆盖官方镜像并带 RBAC
     image: fbd-job-center:latest # 本地构建的镜像（基础版：whyour/qinglong:latest）
     volumes:
       - ./data:/ql/data
