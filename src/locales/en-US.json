@@ -563,6 +563,7 @@
   "通知发送成功": "Notification sent successfully",
   "通知方式": "Notification Method",
   "通知设置": "Notification Settings",
+  "通知邮箱": "Notify Emails",
   "邮箱": "Email",
   "邮箱地址": "Email Address",
   "邮箱服务名称，比如126、163、Gmail、QQ等，支持列表https://github.com/nodemailer/nodemailer/blob/master/lib/well-known/services.json": "Email service name, e.g., 126, 163, Gmail, QQ, etc. Supported list: https://github.com/nodemailer/nodemailer/blob/master/lib/well-known/services.json",
