@@ -1,7 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Table, Modal, Form, Input, Checkbox, message, Popconfirm } from 'antd';
+import intl from 'react-intl-universal';
 import { request } from '@/utils/http';
 import config from '@/utils/config';
+
+// pageKey → 侧边栏同款页面名 i18n key（与 defaultProps 菜单一致）
+const PAGE_LABEL_KEY: Record<string, string> = {
+  dashboard: '仪表盘',
+  crons: '定时任务',
+  subscriptions: '订阅管理',
+  envs: '环境变量',
+  configs: '配置文件',
+  scripts: '脚本管理',
+  dependencies: '依赖管理',
+  logs: '日志管理',
+  settings: '系统设置',
+};
+const pageLabel = (k: string) => {
+  const key = PAGE_LABEL_KEY[k];
+  return key ? intl.get(key) || key : k;
+};
 
 const RoleManage = () => {
   const [data, setData] = useState<any[]>([]);
@@ -64,7 +82,7 @@ const RoleManage = () => {
     {
       title: '页面权限',
       dataIndex: 'pageKeys',
-      render: (k: string[]) => (k || []).join(', '),
+      render: (k: string[]) => (k || []).map(pageLabel).join(', '),
     },
     {
       title: '操作',
@@ -104,7 +122,9 @@ const RoleManage = () => {
             <Input />
           </Form.Item>
           <Form.Item name="pageKeys" label="可访问页面" rules={[{ required: true }]}>
-            <Checkbox.Group options={allKeys.map((k) => ({ label: k, value: k }))} />
+            <Checkbox.Group
+              options={allKeys.map((k) => ({ label: pageLabel(k), value: k }))}
+            />
           </Form.Item>
         </Form>
       </Modal>
