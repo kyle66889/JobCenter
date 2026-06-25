@@ -60,6 +60,10 @@ export default ({ app }: { app: Application }) => {
       secret: config.jwt.secret,
       algorithms: ['HS384'],
     }).unless({
+      // 在 baseUrl(QlBaseUrl) 下，originalUrl 仍带前缀(如 /fbdcenter/api/user)，
+      // 会被 /^(\/(?!api\/).*)$/ 误判为非 API 而跳过 JWT 解码，导致 req.auth.userId 丢失、
+      // RBAC 认成匿名(isAdmin=false)。改用已被 rewrite 去掉前缀的 req.url(/api/user)匹配。
+      useOriginalUrl: false,
       path: [...config.apiWhiteList, /^(\/(?!api\/).*)$/i],
     }),
   );
