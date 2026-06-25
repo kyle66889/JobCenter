@@ -164,9 +164,6 @@ devDependencies:
   '@react-hook/resize-observer':
     specifier: ^2.0.2
     version: 2.0.2(react@18.3.1)
-  '@types/bcryptjs':
-    specifier: ^3.0.0
-    version: 3.0.0
   '@types/body-parser':
     specifier: ^1.19.2
     version: 1.19.5
@@ -4274,13 +4271,6 @@ packages:
       '@babel/types': 7.26.0
     dev: true
 
-  /@types/bcryptjs@3.0.0:
-    resolution: {integrity: sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==}
-    deprecated: This is a stub types definition. bcryptjs provides its own type definitions, so you do not need this installed.
-    dependencies:
-      bcryptjs: 3.0.3
-    dev: true
-
   /@types/body-parser@1.19.5:
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
     dependencies:
@@ -6350,6 +6340,7 @@ packages:
   /bcryptjs@3.0.3:
     resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
     hasBin: true
+    dev: false
 
   /before@0.0.1:
     resolution: {integrity: sha512-1J5SWbkoVJH9DTALN8igB4p+nPKZzPrJ/HomqBDLpfUvDXCdjdBmBUcH5McZfur0lftVssVU6BZug5NYh87zTw==}
