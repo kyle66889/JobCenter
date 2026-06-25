@@ -66,6 +66,9 @@ export default async () => {
       }
     }
 
+    const seedRbac = (await import('../services/auth-seed')).default;
+    await seedRbac();
+
     Logger.info('✌️ DB loaded');
   } catch (error) {
     Logger.error('✌️ DB load failed', error);
