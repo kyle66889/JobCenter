@@ -1,6 +1,9 @@
 services:
   web:
-    image: whyour/qinglong:latest # 基于 Debian 的版本：whyour/qinglong:debian  
+    build:
+      context: .
+      dockerfile: Dockerfile.fbd # 薄层覆盖官方镜像，把品牌名改成 FBD Job Center
+    image: fbd-job-center:latest # 本地构建的镜像（基础版：whyour/qinglong:latest）
     volumes:
       - ./data:/ql/data
     ports:
