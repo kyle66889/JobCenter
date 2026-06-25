@@ -9,6 +9,6 @@ services:
     ports:
       - "5700:5700"
     environment:
-      QlBaseUrl: '/' # 部署路径非必须，以斜杠开头和结尾，比如 /test/
+      QlBaseUrl: '/fbdcenter/' # 部署路径非必须，以斜杠开头和结尾，比如 /test/
       TZ: America/Los_Angeles # 容器时区：太平洋时间（日志时间戳 + 定时任务触发时刻）
     restart: unless-stopped
