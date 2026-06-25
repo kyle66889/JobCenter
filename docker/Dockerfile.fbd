@@ -16,6 +16,7 @@ RUN npm i -g pnpm@8.3.1
 COPY package.json pnpm-lock.yaml .npmrc ./
 RUN pnpm install
 COPY . .
+ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build:back && npm run build:front
 
 FROM whyour/qinglong:latest
