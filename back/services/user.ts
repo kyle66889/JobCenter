@@ -164,21 +164,7 @@ export default class UserService {
         lastaddr: address,
         platform: req.platform,
       });
-      this.notificationService.notify(
-        t('登录通知'),
-        t('你于') +
-          dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss') +
-          t('在') +
-          address +
-          ' ' +
-          req.platform +
-          t('端') +
-          ' ' +
-          t('登录失败') +
-          t('，ip地址') +
-          ' ' +
-          ip,
-      );
+      // 登录失败也不再推送通知（仅保留登录日志）
       await this.insertDb({
         type: AuthDataType.loginLog,
         info: {
