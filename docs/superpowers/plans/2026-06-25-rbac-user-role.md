@@ -18,6 +18,17 @@
 
 **Spec:** `docs/superpowers/specs/2026-06-25-rbac-user-role-design.md`
 
+## 工具链命令（执行时一律以此为准，覆盖各 Task 中旧写法）
+
+> 本仓库前端是 `@umijs/max`，`umi-test` 未安装，`@types/node` 较老。实测确定如下命令：
+
+- **纯逻辑单测**：测试用 Node 内置 `node:test` + `node:assert`（**不是** jest 的 `describe/it/expect`）。
+  运行：`TS_NODE_TRANSPILE_ONLY=1 node --require ts-node/register --test <test文件>`
+  （transpile-only 跳过类型检查，类型检查交给下面的 tsc）
+- **后端编译校验**：`npx tsc --noEmit -p back/tsconfig.json`
+- **前端构建校验**：`npm run build:front`（底层 `max build`）
+- 依赖已 `pnpm install`；新增依赖用 `pnpm add` / `pnpm add -D`。
+
 ---
 
 ## 文件结构
@@ -68,6 +79,8 @@
 
 ```ts
 // back/shared/pageKeys.test.ts
+import { test } from 'node:test';
+import assert from 'node:assert';
 import {
   PAGE_KEYS,
   resolvePageKey,
@@ -75,44 +88,43 @@ import {
   computeEffectivePages,
 } from './pageKeys';
 
-describe('pageKeys', () => {
-  it('PAGE_KEYS 覆盖 9 个页面', () => {
-    expect(PAGE_KEYS).toEqual([
-      'dashboard', 'crons', 'subscriptions', 'envs',
-      'configs', 'scripts', 'dependencies', 'logs', 'settings',
-    ]);
-  });
+test('PAGE_KEYS 覆盖 9 个页面', () => {
+  assert.deepStrictEqual([...PAGE_KEYS], [
+    'dashboard', 'crons', 'subscriptions', 'envs',
+    'configs', 'scripts', 'dependencies', 'logs', 'settings',
+  ]);
+});
 
-  it('resolvePageKey 把 API 路径映射到 pageKey', () => {
-    expect(resolvePageKey('/api/crons')).toBe('crons');
-    expect(resolvePageKey('/api/crons/123/run')).toBe('crons');
-    expect(resolvePageKey('/api/envs')).toBe('envs');
-    expect(resolvePageKey('/api/system/config')).toBe('settings');
-    expect(resolvePageKey('/api/dashboard')).toBe('dashboard');
-  });
+test('resolvePageKey 把 API 路径映射到 pageKey', () => {
+  assert.strictEqual(resolvePageKey('/api/crons'), 'crons');
+  assert.strictEqual(resolvePageKey('/api/crons/123/run'), 'crons');
+  assert.strictEqual(resolvePageKey('/api/envs'), 'envs');
+  assert.strictEqual(resolvePageKey('/api/system/config'), 'settings');
+  assert.strictEqual(resolvePageKey('/api/dashboard'), 'dashboard');
+});
 
-  it('未知路径返回 null（默认不放行）', () => {
-    expect(resolvePageKey('/api/whatever')).toBeNull();
-  });
+test('未知路径返回 null（默认不放行）', () => {
+  assert.strictEqual(resolvePageKey('/api/whatever'), null);
+});
 
-  it('isAdminOnlyPath 命中 users/roles', () => {
-    expect(isAdminOnlyPath('/api/users')).toBe(true);
-    expect(isAdminOnlyPath('/api/roles/abc')).toBe(true);
-    expect(isAdminOnlyPath('/api/crons')).toBe(false);
-  });
+test('isAdminOnlyPath 命中 users/roles', () => {
+  assert.strictEqual(isAdminOnlyPath('/api/users'), true);
+  assert.strictEqual(isAdminOnlyPath('/api/roles/abc'), true);
+  assert.strictEqual(isAdminOnlyPath('/api/crons'), false);
+});
 
-  it('computeEffectivePages 求角色 pageKey 并集去重', () => {
-    expect(
-      computeEffectivePages([['dashboard', 'crons'], ['crons', 'logs']]),
-    ).toEqual(['dashboard', 'crons', 'logs']);
-  });
+test('computeEffectivePages 求角色 pageKey 并集去重', () => {
+  assert.deepStrictEqual(
+    computeEffectivePages([['dashboard', 'crons'], ['crons', 'logs']]),
+    ['dashboard', 'crons', 'logs'],
+  );
 });
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx umi-test back/shared/pageKeys.test.ts`
-Expected: FAIL（`Cannot find module './pageKeys'`）
+Run: `TS_NODE_TRANSPILE_ONLY=1 node --require ts-node/register --test back/shared/pageKeys.test.ts`
+Expected: FAIL（import 失败：`Cannot find module './pageKeys'`，tests 全挂）
 
 - [ ] **Step 3: 写实现**
 
@@ -167,8 +179,8 @@ export function computeEffectivePages(rolePages: string[][]): string[] {
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `npx umi-test back/shared/pageKeys.test.ts`
-Expected: PASS（5 个用例）
+Run: `TS_NODE_TRANSPILE_ONLY=1 node --require ts-node/register --test back/shared/pageKeys.test.ts`
+Expected: PASS（tests 5 / pass 5 / fail 0）
 
 - [ ] **Step 5: 提交**
 
@@ -234,7 +246,7 @@ export const UserModel = sequelize.define<UserInstance>('User', {
 
 - [ ] **Step 2: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error（与本文件相关）
 
 - [ ] **Step 3: 提交**
@@ -280,7 +292,7 @@ export const RoleModel = sequelize.define<RoleInstance>('Role', {
 
 - [ ] **Step 2: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 3: 提交**
@@ -352,7 +364,7 @@ export const RolePermissionModel = sequelize.define<RolePermissionInstance>(
 
 - [ ] **Step 3: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 4: 提交**
@@ -389,7 +401,7 @@ import { RolePermissionModel } from '../data/rolePermission';
 
 - [ ] **Step 2: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 3: 提交**
@@ -412,24 +424,24 @@ git commit -m "feat(rbac): 启动时同步 4 张 RBAC 表"
 - [ ] **Step 1: 追加失败测试**
 
 ```ts
-// 追加到 back/shared/pageKeys.test.ts
-import { assertNotLastAdmin } from './pageKeys';
+// 追加到 back/shared/pageKeys.test.ts（文件已有 import { test } from 'node:test'）
+// 在 import 段补充 assertNotLastAdmin：
+//   import { ..., assertNotLastAdmin } from './pageKeys';
 
-describe('guards', () => {
-  it('删/停最后一个 Admin 抛错', () => {
-    expect(() => assertNotLastAdmin(1, 'delete')).toThrow();
-    expect(() => assertNotLastAdmin(0, 'disable')).toThrow();
-  });
-  it('还有其他 Admin 时放行', () => {
-    expect(() => assertNotLastAdmin(2, 'delete')).not.toThrow();
-  });
+test('删/停最后一个 Admin 抛错', () => {
+  assert.throws(() => assertNotLastAdmin(0, 'delete'));
+  assert.throws(() => assertNotLastAdmin(0, 'disable'));
+});
+
+test('还有其他 Admin 时放行', () => {
+  assert.doesNotThrow(() => assertNotLastAdmin(2, 'delete'));
 });
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx umi-test back/shared/pageKeys.test.ts`
-Expected: FAIL（`assertNotLastAdmin is not a function`）
+Run: `TS_NODE_TRANSPILE_ONLY=1 node --require ts-node/register --test back/shared/pageKeys.test.ts`
+Expected: FAIL（`assertNotLastAdmin is not a function`，相关用例失败）
 
 - [ ] **Step 3: 追加实现**
 
@@ -448,8 +460,8 @@ export function assertNotLastAdmin(
 
 - [ ] **Step 4: 跑测试确认通过**
 
-Run: `npx umi-test back/shared/pageKeys.test.ts`
-Expected: PASS（全部用例）
+Run: `TS_NODE_TRANSPILE_ONLY=1 node --require ts-node/register --test back/shared/pageKeys.test.ts`
+Expected: PASS（全部用例，tests 7 / fail 0）
 
 - [ ] **Step 5: 提交**
 
@@ -650,7 +662,7 @@ export default class RbacService {
 
 - [ ] **Step 2: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 3: 提交**
@@ -761,7 +773,7 @@ export default async function seedRbac() {
 
 - [ ] **Step 3: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 4: 提交**
@@ -828,7 +840,7 @@ await UserModel.update({ lastLoginAt: String(timestamp) }, { where: { id: userRo
 
 - [ ] **Step 3: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 4: 提交**
@@ -905,7 +917,7 @@ if (pathLower.startsWith('/api/')) {
 
 - [ ] **Step 3: 编译校验**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 - [ ] **Step 4: 提交**
@@ -982,7 +994,7 @@ route.put('/password',
 
 - [ ] **Step 3: 编译校验 + 提交**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 Expected: 无新增 error
 
 ```bash
@@ -1083,7 +1095,7 @@ import `users from './users';` 并在 `return app;` 前 `users(app);`。
 
 - [ ] **Step 3: 编译校验 + 提交**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 
 ```bash
 git add back/api/users.ts back/api/index.ts
@@ -1164,7 +1176,7 @@ import `roles from './roles';` 并 `roles(app);`。
 
 - [ ] **Step 3: 编译校验 + 提交**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
+Run: `npx tsc --noEmit -p back/tsconfig.json`
 
 ```bash
 git add back/api/roles.ts back/api/index.ts
@@ -1263,7 +1275,7 @@ docker rm -f rbac-smoke && rm -rf docker/_smoke_data
 
 ## Phase 9：前端
 
-> umi + antd + react。先读 `src/pages/setting/index.tsx` 看 Tab 注册方式、读 `src/pages/env/index.tsx` 看 antd Table/Modal CRUD 模式、读 `src/layouts/index.tsx` 看菜单与 `useModel`/请求封装。前端无单测，靠 Phase 10 浏览器冒烟。每个 Task 完成后 `npm run build`（或 `umi build`）确保编译通过再提交。
+> umi + antd + react。先读 `src/pages/setting/index.tsx` 看 Tab 注册方式、读 `src/pages/env/index.tsx` 看 antd Table/Modal CRUD 模式、读 `src/layouts/index.tsx` 看菜单与 `useModel`/请求封装。前端无单测，靠 Phase 10 浏览器冒烟。每个 Task 完成后 `npm run build:front`确保编译通过再提交。
 
 ### Task 16: 角色管理 Tab
 
@@ -1348,7 +1360,7 @@ export default RoleManage;
 
 - [ ] **Step 3: 构建校验**
 
-Run: `npm run build`（或 `npx umi build`）
+Run: `npm run build:front`
 Expected: 构建成功
 
 - [ ] **Step 4: 提交**
@@ -1373,7 +1385,7 @@ git commit -m "feat(rbac): 前端角色管理 Tab"
 
 - [ ] **Step 2: 注册 Tab（仅 Admin）+ 构建校验**
 
-Run: `npm run build`
+Run: `npm run build:front`
 Expected: 成功
 
 - [ ] **Step 3: 提交**
@@ -1407,7 +1419,7 @@ git commit -m "feat(rbac): 前端用户管理 Tab"
 
 - [ ] **Step 2: 构建校验**
 
-Run: `npm run build`
+Run: `npm run build:front`
 Expected: 成功
 
 - [ ] **Step 3: 提交**
@@ -1439,7 +1451,7 @@ git commit -m "feat(rbac): 侧边栏按权限过滤 + 显示当前用户"
 
 - [ ] **Step 3: 构建校验 + 提交**
 
-Run: `npm run build`
+Run: `npm run build:front`
 
 ```bash
 git add src/locales src/layouts/index.tsx
