@@ -9,6 +9,10 @@ import { CrontabViewModel } from '../data/cronView';
 import { CrontabStatModel } from '../data/cronStats';
 import { RunningInstanceModel } from '../data/runningInstance';
 import { sequelize } from '../data';
+import { UserModel } from '../data/user';
+import { RoleModel } from '../data/role';
+import { UserRoleModel } from '../data/userRole';
+import { RolePermissionModel } from '../data/rolePermission';
 
 export default async () => {
   try {
@@ -21,6 +25,10 @@ export default async () => {
     await CrontabViewModel.sync();
     await CrontabStatModel.sync();
     await RunningInstanceModel.sync();
+    await UserModel.sync();
+    await RoleModel.sync();
+    await UserRoleModel.sync();
+    await RolePermissionModel.sync();
 
     // 初始化新增字段
     const migrations = [
