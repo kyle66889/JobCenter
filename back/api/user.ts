@@ -144,20 +144,21 @@ export default (app: Router) => {
       const rbac = Container.get(RbacService);
       let isAdmin = false;
       let pages: string[] = [];
-      let nickname = authInfo.username;
+      // 身份按登录用户(req.auth.userId)取 Users 表，而非全局共享 authInfo（否则任何人都显示 admin）
+      const u = userId ? await rbac.findUserById(userId) : null;
       if (userId) {
-        const u = await rbac.findUserById(userId);
-        if (u) nickname = u.nickname || u.username || authInfo.username;
         isAdmin = await rbac.isAdmin(userId);
         pages = await rbac.effectivePages(userId);
       }
       res.send({
         code: 200,
         data: {
-          username: authInfo.username,
-          nickname,
+          username: u?.username || authInfo.username,
+          nickname: u?.nickname || u?.username || authInfo.username,
           avatar: authInfo.avatar,
-          twoFactorActivated: authInfo.twoFactorActivated,
+          twoFactorActivated: u
+            ? u.twoFactorActivated === 1
+            : authInfo.twoFactorActivated,
           isAdmin,
           pages,
         },
