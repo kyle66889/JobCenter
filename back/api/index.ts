@@ -12,6 +12,8 @@ import subscription from './subscription';
 import update from './update';
 import dashboard from './dashboard';
 import health from './health';
+import users from './users';
+import roles from './roles';
 
 export default () => {
   const app = Router();
@@ -28,6 +30,8 @@ export default () => {
   update(app);
   dashboard(app);
   health(app);
+  users(app);
+  roles(app);
 
   return app;
 };
