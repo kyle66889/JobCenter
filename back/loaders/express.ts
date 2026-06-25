@@ -117,8 +117,10 @@ export default ({ app }: { app: Application }) => {
     if (isValidToken(authInfo, headerToken, req.platform)) {
       // token 已确认有效；对 /api/ 叠加 pageKey 实时鉴权
       if (pathLower.startsWith('/api/')) {
-        // 自助端点：仅需登录态（token 已校验），放行给路由用 userId 自行处理
-        if (['/api/user', '/api/user/password'].includes(pathLower)) {
+        // 自助端点（本人信息/改密/登出/通知/2FA/头像等）：任何持有有效 token 的用户都放行，
+        // 不受 pageKey 限制；登出尤其必须对所有人开放。注意 /api/users（用户管理，复数）
+        // 不匹配 '/api/user/'，仍走下方 isAdminOnlyPath 拦截。
+        if (pathLower === '/api/user' || pathLower.startsWith('/api/user/')) {
           return next();
         }
         const userId = (req as any).auth?.userId as number | undefined;
