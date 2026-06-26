@@ -22,6 +22,9 @@ export function encrypt(plaintext: string, keyHex: string): string {
 
 export function decrypt(blob: string, keyHex: string): string {
   const raw = Buffer.from(blob, 'base64');
+  if (raw.length < IV_LEN + TAG_LEN) {
+    throw new Error('FBD 密文格式错误：长度不足');
+  }
   const iv = raw.subarray(0, IV_LEN);
   const tag = raw.subarray(IV_LEN, IV_LEN + TAG_LEN);
   const ct = raw.subarray(IV_LEN + TAG_LEN);

@@ -31,3 +31,7 @@ test('篡改密文解密抛错', () => {
 test('密钥长度不对抛错', () => {
   assert.throws(() => encrypt('x', 'abcd'), /64 位 hex/);
 });
+
+test('密文过短抛错', () => {
+  assert.throws(() => decrypt('YWJj', KEY), /长度不足/); // "abc" base64, 3 bytes
+});
