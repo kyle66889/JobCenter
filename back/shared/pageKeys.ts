@@ -1,6 +1,6 @@
 export const PAGE_KEYS = [
   'dashboard', 'crons', 'subscriptions', 'envs',
-  'configs', 'scripts', 'dependencies', 'logs', 'settings',
+  'configs', 'scripts', 'dependencies', 'logs', 'settings', 'fbd',
 ] as const;
 export type PageKey = (typeof PAGE_KEYS)[number];
 
@@ -15,6 +15,7 @@ const PREFIX_MAP: Array<[string, PageKey]> = [
   ['/api/dependencies', 'dependencies'],
   ['/api/logs', 'logs'],
   ['/api/system', 'settings'],
+  ['/api/fbd', 'fbd'],
 ];
 
 export function resolvePageKey(path: string): PageKey | null {
@@ -30,12 +31,20 @@ export function resolvePageKey(path: string): PageKey | null {
   return matched;
 }
 
-// 用户/角色管理端点：额外要求 Admin
+// 用户/角色管理端点 + FBD 审批/拒绝端点：额外要求 Admin
 export function isAdminOnlyPath(path: string): boolean {
   const p = path.toLowerCase();
-  return ['/api/users', '/api/roles'].some(
-    (x) => p === x || p.startsWith(x + '/'),
-  );
+  if (['/api/users', '/api/roles'].some((x) => p === x || p.startsWith(x + '/'))) {
+    return true;
+  }
+  // FBD 中心：审批/拒绝端点仅 Admin（列表/详情/新建/删除走 fbd pageKey）
+  if (
+    p.startsWith('/api/fbd/tasks/') &&
+    (p.endsWith('/approve') || p.endsWith('/reject'))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function computeEffectivePages(rolePages: string[][]): string[] {

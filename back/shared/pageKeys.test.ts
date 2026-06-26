@@ -8,10 +8,10 @@ import {
   assertNotLastAdmin,
 } from './pageKeys';
 
-test('PAGE_KEYS 覆盖 9 个页面', () => {
+test('PAGE_KEYS 覆盖 10 个页面（含 fbd）', () => {
   assert.deepStrictEqual([...PAGE_KEYS], [
     'dashboard', 'crons', 'subscriptions', 'envs',
-    'configs', 'scripts', 'dependencies', 'logs', 'settings',
+    'configs', 'scripts', 'dependencies', 'logs', 'settings', 'fbd',
   ]);
 });
 
@@ -47,4 +47,17 @@ test('删/停最后一个 Admin 抛错', () => {
 
 test('还有其他 Admin 时放行', () => {
   assert.doesNotThrow(() => assertNotLastAdmin(2, 'delete'));
+});
+
+test('resolvePageKey 把 /api/fbd 映射到 fbd', () => {
+  assert.strictEqual(resolvePageKey('/api/fbd'), 'fbd');
+  assert.strictEqual(resolvePageKey('/api/fbd/tasks'), 'fbd');
+  assert.strictEqual(resolvePageKey('/api/fbd/tasks/5'), 'fbd');
+});
+
+test('isAdminOnlyPath：fbd 审批/拒绝端点要求 Admin，列表不要求', () => {
+  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5/approve'), true);
+  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5/reject'), true);
+  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks'), false);
+  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5'), false);
 });
