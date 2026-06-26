@@ -45,21 +45,24 @@ const FbdCenter = () => {
   const [detail, setDetail] = useState<any>(null);
   const isAdmin = !!user?.isAdmin;
 
-  const getList = () => {
+  const getList = (opts?: { search?: string; pageNum?: number }) => {
     setLoading(true);
+    const s = opts?.search !== undefined ? opts.search : searchText;
+    const p = opts?.pageNum !== undefined ? opts.pageNum : page;
     const params = new URLSearchParams();
-    if (searchText) params.set('searchValue', searchText);
+    if (s) params.set('searchValue', s);
     if (statusFilter !== undefined) params.set('status', String(statusFilter));
-    params.set('page', String(page));
+    params.set('page', String(p));
     params.set('size', String(size));
     request
       .get(`${config.apiPrefix}fbd/tasks?${params.toString()}`)
       .then(({ code, data }) => {
         if (code === 200) {
-          setData(data.data);
-          setTotal(data.total);
+          setData(data?.data ?? []);
+          setTotal(data?.total ?? 0);
         }
       })
+      .catch(() => message.error('加载失败，请重试'))
       .finally(() => setLoading(false));
   };
 
@@ -78,7 +81,8 @@ const FbdCenter = () => {
         } else {
           message.error(msg || '审批失败');
         }
-      });
+      })
+      .catch(() => message.error('网络错误，请重试'));
   };
 
   const handleReject = (record: any) => {
@@ -91,7 +95,8 @@ const FbdCenter = () => {
         } else {
           message.error(msg || '操作失败');
         }
-      });
+      })
+      .catch(() => message.error('网络错误，请重试'));
   };
 
   const columns: ColumnProps<any>[] = [
@@ -112,17 +117,17 @@ const FbdCenter = () => {
         <Space>
           <a onClick={() => setDetail(record)}>查看</a>
           {isAdmin && record.status === 0 && (
-            <Popconfirm
-              title="确认通过并执行更新？"
-              onConfirm={() => handleApprove(record)}
-            >
-              <a>通过</a>
-            </Popconfirm>
-          )}
-          {isAdmin && record.status === 0 && (
-            <Popconfirm title="确认拒绝？" onConfirm={() => handleReject(record)}>
-              <a style={{ color: '#ff4d4f' }}>拒绝</a>
-            </Popconfirm>
+            <>
+              <Popconfirm
+                title="确认通过并执行更新？"
+                onConfirm={() => handleApprove(record)}
+              >
+                <a>通过</a>
+              </Popconfirm>
+              <Popconfirm title="确认拒绝？" onConfirm={() => handleReject(record)}>
+                <a style={{ color: '#ff4d4f' }}>拒绝</a>
+              </Popconfirm>
+            </>
           )}
         </Space>
       ),
@@ -154,9 +159,10 @@ const FbdCenter = () => {
           key="search"
           placeholder="请输入名称或者关键词"
           style={{ width: 220 }}
-          onSearch={() => {
+          onSearch={(val) => {
+            setSearchText(val);
             setPage(1);
-            getList();
+            getList({ search: val, pageNum: 1 });
           }}
           onChange={(e) => setSearchText(e.target.value)}
         />,
