@@ -47,3 +47,10 @@ test('buildFuelUpdates：都空返回空数组', () => {
   assert.deepStrictEqual(buildFuelUpdates({}, {}), []);
   assert.deepStrictEqual(buildFuelUpdates({ ground: '16.50%' }, {}), []);
 });
+
+test('buildFuelUpdates：配了 id 但缺费率 → 抛清晰错误', () => {
+  assert.throws(
+    () => buildFuelUpdates({}, { ground: '1' }),
+    /Ground 配置了 MZL_Priceid 但 payload 缺少对应费率/,
+  );
+});

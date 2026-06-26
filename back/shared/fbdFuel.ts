@@ -34,6 +34,9 @@ export function buildFuelUpdates(payload: any, mzlPriceIds: any): FuelUpdate[] {
   for (const c of candidates) {
     const idList = parseIds(c.raw);
     if (idList.length === 0) continue;
+    if (c.pct === undefined || c.pct === null || c.pct === '') {
+      throw new Error(`${c.label} 配置了 MZL_Priceid 但 payload 缺少对应费率`);
+    }
     updates.push({ label: c.label, rate: pctToFraction(c.pct), ids: idList });
   }
   return updates;
