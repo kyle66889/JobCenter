@@ -21,15 +21,3 @@ export function assertApprovable(status: FbdTaskStatus): void {
     throw new Error('非待审批状态，不可审批');
   }
 }
-
-// TODO[fbd]: 接真正写 prd 数据库的逻辑。当前为占位框架。
-// 返回值会写入 FbdTask.result；抛错则任务置为 failed。
-export async function applyUpdate(type: string, payload: any): Promise<string> {
-  switch (type) {
-    case 'fedex_rate':
-      // TODO: 调用 prd 数据库更新 API / 直连写表
-      return 'fedex_rate 占位：已模拟更新成功（未真正写 prd）';
-    default:
-      throw new Error(`未知任务类型: ${type}`);
-  }
-}

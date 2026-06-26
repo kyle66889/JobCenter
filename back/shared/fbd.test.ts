@@ -4,7 +4,6 @@ import {
   FbdTaskStatus,
   FBD_STATUS_LABEL,
   assertApprovable,
-  applyUpdate,
 } from './fbd';
 
 test('五状态枚举值固定为 0..4', () => {
@@ -29,13 +28,4 @@ test('assertApprovable 仅放行 pending，其它状态抛错', () => {
   assert.throws(() => assertApprovable(FbdTaskStatus.rejected), /非待审批/);
   assert.throws(() => assertApprovable(FbdTaskStatus.approving), /非待审批/);
   assert.throws(() => assertApprovable(FbdTaskStatus.failed), /非待审批/);
-});
-
-test('applyUpdate fedex_rate 返回成功摘要', async () => {
-  const r = await applyUpdate('fedex_rate', {});
-  assert.match(r, /fedex_rate/);
-});
-
-test('applyUpdate 未知类型抛错', async () => {
-  await assert.rejects(() => applyUpdate('unknown', {}), /未知任务类型/);
 });
