@@ -37,6 +37,12 @@ export default {
         component: '@/pages/crontab/index',
       },
       {
+        path: '/fbd',
+        name: intl.get('FBD 中心'),
+        icon: <IconFont type="ql-icon-crontab" />,
+        component: '@/pages/fbd/index',
+      },
+      {
         path: '/subscription',
         name: intl.get('订阅管理'),
         icon: <IconFont type="ql-icon-subs" />,

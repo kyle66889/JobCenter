@@ -18,7 +18,7 @@ import re
 import sys
 import gzip
 import html as _html
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
@@ -27,6 +27,15 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".fedex_fuel_state.json")
 
 PCT_RE = re.compile(r"^\d+(?:\.\d+)?%$")
+
+# ---- FBD 中心：把抓到的费率作为一条「待审批」任务写入 FBD 中心 ----
+# 暂时测试用：直连容器内 sqlite（脚本与 DB 同在 /ql/data 卷），免鉴权、零额外依赖。
+# 生产化时改为带 scope 的 open API 推送（见 spec 2026-06-25-fbd-center-design.md 第 6 节）。
+DB_FILE = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "database.sqlite")
+)
+FBD_TYPE = "fedex_fuel_charge"       # 与前端创建表单的类型值一致
+FBD_SOURCE = "FedEx Fuel Surcharge"  # 定时任务名作为来源
 
 
 def log(msg):
@@ -103,28 +112,33 @@ def pick_current_row(data_rows):
 
 
 def extract(cells):
-    """按已知列位置提取，并做百分比校验。"""
+    """提取当前行的费率。
+
+    页面当前表格每行 7 列：
+      [0] Ground 生效周期  [1] Ground %       [2] Express 生效日期
+      [3] 国内包裹 %       [4] Freight 单价($/lb)
+      [5] 出口/进口(Export & Import) %        [6] 出口/进口 生效日期
+    注意：页面只有一个合并的 "Export & Import" 费率，没有单独的进口百分比，
+    第 [6] 列是日期而非百分比。
+
+    百分比列改用模式匹配（按出现顺序：Ground、国内包裹、出口/进口），
+    抗未来表格再插入日期列导致的列错位。
+    """
     def at(i):
         return cells[i] if i < len(cells) else ""
 
-    result = {
+    pcts = [c for c in cells if PCT_RE.match(c)]
+    rate = next((c for c in cells if "lb" in c.lower() or "/kg" in c.lower()), at(4))
+
+    return {
         "ground_effective": at(0),
-        "ground": at(1),
+        "ground": pcts[0] if len(pcts) >= 1 else at(1),
         "express_effective": at(2),
-        "express_package": at(3),
-        "express_freight_rate": at(4),
-        "export": at(5),
-        "import": at(6),
+        "express_package": pcts[1] if len(pcts) >= 2 else at(3),
+        "express_freight_rate": rate,
+        "export_import": pcts[-1] if len(pcts) >= 3 else at(5),
+        "export_import_effective": at(6),
     }
-    # 校验关键百分比列；若位置不符，退化为顺序扫描所有百分比
-    if not PCT_RE.match(result["ground"]):
-        pcts = [c for c in cells if PCT_RE.match(c)]
-        if pcts:
-            result["ground"] = pcts[0] if len(pcts) > 0 else result["ground"]
-            result["express_package"] = pcts[1] if len(pcts) > 1 else ""
-            result["export"] = pcts[-2] if len(pcts) >= 2 else ""
-            result["import"] = pcts[-1] if len(pcts) >= 1 else ""
-    return result
 
 
 def load_state():
@@ -147,17 +161,98 @@ def save_state(state):
 WATCH = [
     ("ground", "FedEx Ground"),
     ("express_package", "FedEx Express 国内包裹"),
-    ("export", "Express Freight 出口"),
-    ("import", "Express Freight 进口"),
+    ("export_import", "Express Freight 出口/进口"),
 ]
 
 
-def try_notify(title, content):
+def task_recipients():
+    """读取本任务（按 cron 名 = FBD_SOURCE）在面板上配置的通知邮箱 notify_emails。"""
+    import sqlite3
+
     try:
-        from notify import send
+        conn = sqlite3.connect(DB_FILE, timeout=15)
+        row = conn.execute(
+            "SELECT notify_emails FROM Crontabs WHERE name=? LIMIT 1", (FBD_SOURCE,)
+        ).fetchone()
+        conn.close()
+        return (row[0] or "").strip() if row else ""
+    except Exception as e:  # noqa: BLE001
+        log(f"[通知] 读取任务通知邮箱失败: {e}")
+        return ""
+
+
+def try_notify(title, content, recipients=""):
+    try:
+        from notify import send, push_config
+
+        # 收件人＝任务的 notify_emails（在任务编辑页里管）；为空则回退 config.sh 的 SMTP_EMAIL_TO
+        if recipients:
+            push_config["SMTP_EMAIL_TO"] = recipients
         send(title, content)
     except Exception as e:  # noqa: BLE001  通知失败不应让任务标记为失败
         log(f"[通知] 发送失败（不影响抓取结果）: {e}")
+
+
+def push_fbd_task(cur, changes=None):
+    """把当前抓到的燃油附加费写入 FBD 中心，状态＝待审批（待处理），等待人工审批。
+    仅在费率变化时调用；失败不影响抓取任务本身。"""
+    import sqlite3
+
+    title = (
+        f"FedEx 燃油附加费 待审批 "
+        f"{cur.get('ground_effective') or datetime.now().strftime('%Y-%m-%d')}"
+    )
+    payload = {
+        k: cur.get(k)
+        for k in (
+            "ground_effective",
+            "ground",
+            "express_effective",
+            "express_package",
+            "express_freight_rate",
+            "export_import",
+            "export_import_effective",
+        )
+    }
+    payload["source_url"] = URL
+    if changes:
+        payload["changes"] = changes  # 本次相对上次的变化明细
+
+    mzl_price_id = json.dumps(
+        {
+            "ground": os.environ.get("FEDEX_FUEL_GROUND_ID", ""),
+            "express": os.environ.get("FEDEX_FUEL_EXPRESS_ID", ""),
+        },
+        ensure_ascii=False,
+    )
+    local_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    utc = datetime.now(timezone.utc)
+    ts = utc.strftime("%Y-%m-%d %H:%M:%S.") + f"{utc.microsecond // 1000:03d} +00:00"
+    try:
+        conn = sqlite3.connect(DB_FILE, timeout=15)
+        conn.execute(
+            "INSERT INTO FbdTasks "
+            "(title, type, source, payload, status, result, operator, "
+            "MZL_PriceID, timestamp, createdAt, updatedAt) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                title,
+                FBD_TYPE,
+                FBD_SOURCE,
+                json.dumps(payload, ensure_ascii=False),
+                0,  # status=0 待审批
+                "",
+                "",
+                mzl_price_id,
+                local_now,
+                ts,
+                ts,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        log(f"[FBD] 已生成待审批任务：{title}")
+    except Exception as e:  # noqa: BLE001
+        log(f"[FBD] 生成任务失败（不影响抓取）: {e}")
 
 
 def main():
@@ -174,8 +269,8 @@ def main():
     log(f"  FedEx Ground          : {cur['ground']}")
     log(f"  FedEx Express 国内包裹 : {cur['express_package']}")
     log(f"  Express Freight 单价   : {cur['express_freight_rate']}")
-    log(f"  Express Freight 出口   : {cur['export']}")
-    log(f"  Express Freight 进口   : {cur['import']}")
+    log(f"  Express Freight 出口/进口: {cur['export_import']}")
+    log(f"  出口/进口 生效日期      : {cur['export_import_effective']}")
     log("=" * 48)
 
     prev = load_state()
@@ -187,20 +282,24 @@ def main():
             changes.append(f"{label}: {old} → {new}")
 
     if changes:
-        log("[变化] 检测到以下变化，发送邮件提醒：")
+        log("[变化] 检测到以下变化，生成待审批任务并发邮件提醒：")
         for c in changes:
             log("  - " + c)
+        # 仅在费率变化时：① 生成一条待审批 FBD 任务 ② 邮件通知相关人员
+        push_fbd_task(cur, changes)
         content = (
             "FedEx 燃油附加费发生变化：\n\n"
             + "\n".join(changes)
             + f"\n\n当前生效周期(Ground): {cur['ground_effective']}"
             + f"\n来源: {URL}"
+            + "\n\n请到 FBD 中心审批：待处理"
         )
-        try_notify("FedEx 燃油附加费变化提醒", content)
+        # 收件人＝本任务在面板上配置的 notify_emails
+        try_notify("FedEx 燃油附加费变化提醒", content, recipients=task_recipients())
     elif not prev:
-        log("[变化] 首次运行，已建立基线，本次不发提醒。")
+        log("[变化] 首次运行，已建立基线，本次不建任务、不发提醒。")
     else:
-        log("[变化] 与上次相比无变化，不发提醒。")
+        log("[变化] 与上次相比无变化，不建任务、不发提醒。")
 
     cur["_checked_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     save_state(cur)

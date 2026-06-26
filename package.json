@@ -113,6 +113,7 @@
     "sequelize": "^6.37.5",
     "sockjs": "^0.3.24",
     "sqlite3": "git+https://github.com/whyour/node-sqlite3.git#v1.0.3",
+    "tedious": "^19.2.1",
     "toad-scheduler": "^3.0.1",
     "typedi": "^0.10.0",
     "undici": "^7.9.0",

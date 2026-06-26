@@ -34,6 +34,12 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 SAVE_DIR = "/ql/data/zone_charts"
 STATE_FILE = os.path.join(SAVE_DIR, ".zone_chart_state.json")
 
+# 通知收件人取本任务（按 cron 名）在面板上配置的 notify_emails
+DB_FILE = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "database.sqlite")
+)
+TASK_NAME = "FedEx Zone Chart"
+
 _opener = build_opener(HTTPCookieProcessor(CookieJar()))
 
 
@@ -129,9 +135,29 @@ def save_state(state):
         log(f"[状态] 写入状态文件失败: {e}")
 
 
-def try_notify(title, content):
+def task_recipients():
+    """读取本任务（cron 名 = TASK_NAME）在面板上配置的通知邮箱 notify_emails。"""
+    import sqlite3
+
     try:
-        from notify import send
+        conn = sqlite3.connect(DB_FILE, timeout=15)
+        row = conn.execute(
+            "SELECT notify_emails FROM Crontabs WHERE name=? LIMIT 1", (TASK_NAME,)
+        ).fetchone()
+        conn.close()
+        return (row[0] or "").strip() if row else ""
+    except Exception as e:  # noqa: BLE001
+        log(f"[通知] 读取任务通知邮箱失败: {e}")
+        return ""
+
+
+def try_notify(title, content, recipients=""):
+    try:
+        from notify import send, push_config
+
+        # 收件人＝任务的 notify_emails；为空则回退 config.sh 的 SMTP_EMAIL_TO
+        if recipients:
+            push_config["SMTP_EMAIL_TO"] = recipients
         send(title, content)
     except Exception as e:  # noqa: BLE001  通知失败不影响任务结果
         log(f"[通知] 发送失败（不影响下载结果）: {e}")
@@ -168,16 +194,23 @@ def main():
     log(f"  对比       : {change_note}")
     log("=" * 48)
 
-    content = (
-        f"FedEx Zone Chart 已下载\n\n"
-        f"Origin ZIP: {ORIGIN_ZIP}\n"
-        f"文件: {out_name}\n"
-        f"大小: {size_kb} KB\n"
-        f"对比: {change_note}\n"
-        f"保存路径: {out_path}\n"
-        f"来源: {pdf_url}"
-    )
-    try_notify("FedEx Zone Chart 已更新", content)
+    # 仅在内容变化（md5 与上次不同）时才发邮件；首次/无变化只记日志不发。
+    changed = prev_md5 is not None and prev_md5 != md5
+    if changed:
+        content = (
+            f"FedEx Zone Chart 已更新\n\n"
+            f"Origin ZIP: {ORIGIN_ZIP}\n"
+            f"文件: {out_name}\n"
+            f"大小: {size_kb} KB\n"
+            f"对比: {change_note}\n"
+            f"保存路径: {out_path}\n"
+            f"来源: {pdf_url}"
+        )
+        try_notify("FedEx Zone Chart 已更新", content, recipients=task_recipients())
+    elif prev_md5 is None:
+        log("[变化] 首次下载，已建立基线，本次不发提醒。")
+    else:
+        log("[变化] 与上次内容相同，不发提醒。")
 
     save_state({
         "md5": md5,
@@ -193,5 +226,5 @@ if __name__ == "__main__":
         main()
     except Exception as e:  # noqa: BLE001
         log(f"[错误] 任务执行失败: {e}")
-        try_notify("FedEx Zone Chart 抓取失败", f"任务执行失败:\n{e}")
+        try_notify("FedEx Zone Chart 抓取失败", f"任务执行失败:\n{e}", recipients=task_recipients())
         sys.exit(1)

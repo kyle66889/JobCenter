@@ -13,6 +13,8 @@ import { UserModel } from '../data/user';
 import { RoleModel } from '../data/role';
 import { UserRoleModel } from '../data/userRole';
 import { RolePermissionModel } from '../data/rolePermission';
+import { FbdTaskModel } from '../data/fbdTask';
+import { FbdTaskStatus } from '../shared/fbd';
 
 export default async () => {
   try {
@@ -29,6 +31,7 @@ export default async () => {
     await RoleModel.sync();
     await UserRoleModel.sync();
     await RolePermissionModel.sync();
+    await FbdTaskModel.sync();
 
     // 初始化新增字段
     const migrations = [
@@ -56,6 +59,7 @@ export default async () => {
       { table: 'Envs', column: 'labels', type: 'JSON' },
       { table: 'Users', column: 'avatar', type: 'VARCHAR(255)' },
       { table: 'Crontabs', column: 'notify_emails', type: 'VARCHAR(255)' },
+      { table: 'FbdTasks', column: 'MZL_PriceID', type: 'JSON' },
     ];
 
     for (const migration of migrations) {
@@ -66,6 +70,21 @@ export default async () => {
       } catch (error) {
         // Column already exists or other error, continue
       }
+    }
+
+    // FBD 中心：表为空时种子一条示例（类型与脚本/分发器一致：fedex_fuel_charge）
+    const fbdCount = await FbdTaskModel.count();
+    if (fbdCount === 0) {
+      await FbdTaskModel.create({
+        title: 'FedEx 燃油附加费（示例）',
+        type: 'fedex_fuel_charge',
+        source: 'manual',
+        payload: { note: '示例待审批数据；未配置 MZL_PriceID，approve 会提示未携带 id', rates: {} },
+        status: FbdTaskStatus.pending,
+        result: '',
+        operator: '',
+        timestamp: new Date().toString(),
+      } as any);
     }
 
     const seedRbac = (await import('../services/auth-seed')).default;
