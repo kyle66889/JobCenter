@@ -26,3 +26,7 @@ COPY --from=build /app/static/build/ /ql/static/build/
 COPY --from=build /app/static/dist/ /ql/static/dist/
 # 补充新增运行时依赖（官方镜像 node_modules 没有 bcryptjs）
 COPY --from=build /app/node_modules/bcryptjs/ /ql/node_modules/bcryptjs/
+# SQL Server 驱动：sequelize mssql 方言需要 tedious。官方镜像没有，
+# 且 pnpm 的 .pnpm 结构不便从 build 阶段直接 COPY，故在运行镜像内 npm 安装
+# （扁平装入 /ql/node_modules，连同其传递依赖，node 可直接 require）。
+RUN cd /ql && npm install --no-save --no-package-lock --no-audit --no-fund tedious@19.2.1
