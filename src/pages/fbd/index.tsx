@@ -119,7 +119,7 @@ const fuelDetailRows = (payload: any, mzlRaw: any) => {
 };
 
 const FbdCenter = () => {
-  const { headerStyle, user } = useOutletContext<SharedContext>();
+  const { headerStyle } = useOutletContext<SharedContext>();
   const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -134,7 +134,6 @@ const FbdCenter = () => {
   const [creating, setCreating] = useState(false);
   const [typeSel, setTypeSel] = useState<string | undefined>(undefined);
   const [form] = Form.useForm();
-  const isAdmin = !!user?.isAdmin;
 
   const getList = (opts?: {
     search?: string;
@@ -307,7 +306,7 @@ const FbdCenter = () => {
           <a onClick={() => openDetail(record, 'log')}>
             {record.type === 'fedex_fuel_charge' ? '日志' : '查看'}
           </a>
-          {isAdmin && record.status === 0 && (
+          {record.status === 0 && (
             <>
               <Popconfirm
                 title="确认通过并执行更新？"

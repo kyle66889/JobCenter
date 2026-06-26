@@ -31,20 +31,13 @@ export function resolvePageKey(path: string): PageKey | null {
   return matched;
 }
 
-// 用户/角色管理端点 + FBD 审批/拒绝端点：额外要求 Admin
+// 用户/角色管理端点：额外要求 Admin
+// 注：FBD 审批/拒绝不再要求 Admin —— 凡有 fbd pageKey 的角色即可审批（走 PREFIX_MAP 鉴权）。
 export function isAdminOnlyPath(path: string): boolean {
   const p = path.toLowerCase();
-  if (['/api/users', '/api/roles'].some((x) => p === x || p.startsWith(x + '/'))) {
-    return true;
-  }
-  // FBD 中心：审批/拒绝端点仅 Admin（列表/详情/新建/删除走 fbd pageKey）
-  if (
-    p.startsWith('/api/fbd/tasks/') &&
-    (p.endsWith('/approve') || p.endsWith('/reject'))
-  ) {
-    return true;
-  }
-  return false;
+  return ['/api/users', '/api/roles'].some(
+    (x) => p === x || p.startsWith(x + '/'),
+  );
 }
 
 export function computeEffectivePages(rolePages: string[][]): string[] {
