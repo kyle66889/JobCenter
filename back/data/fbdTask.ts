@@ -8,6 +8,7 @@ export class FbdTask {
   type?: string;
   source?: string;
   payload?: any;
+  MZL_PriceID?: any;
   status?: FbdTaskStatus;
   result?: string;
   operator?: string;
@@ -19,6 +20,7 @@ export class FbdTask {
     this.type = options.type;
     this.source = options.source || 'manual';
     this.payload = options.payload ?? {};
+    this.MZL_PriceID = options.MZL_PriceID ?? {};
     this.status =
       typeof options.status === 'number'
         ? options.status
@@ -36,6 +38,7 @@ export const FbdTaskModel = sequelize.define<FbdTaskInstance>('FbdTask', {
   type: DataTypes.STRING,
   source: DataTypes.STRING,
   payload: DataTypes.JSON,
+  MZL_PriceID: DataTypes.JSON,
   status: DataTypes.NUMBER,
   result: DataTypes.TEXT,
   operator: DataTypes.STRING,

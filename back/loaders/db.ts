@@ -59,6 +59,7 @@ export default async () => {
       { table: 'Envs', column: 'labels', type: 'JSON' },
       { table: 'Users', column: 'avatar', type: 'VARCHAR(255)' },
       { table: 'Crontabs', column: 'notify_emails', type: 'VARCHAR(255)' },
+      { table: 'FbdTasks', column: 'MZL_PriceID', type: 'JSON' },
     ];
 
     for (const migration of migrations) {
