@@ -443,7 +443,7 @@ const FbdCenter = () => {
         title={detail?.title}
         footer={null}
         onCancel={() => setDetail(null)}
-        width={640}
+        width={960}
       >
         {detail && detailMode === 'detail' ? (
           <div>
@@ -454,9 +454,17 @@ const FbdCenter = () => {
               rowKey="key"
               pagination={false}
               columns={[
-                { title: '类型', dataIndex: 'name', key: 'name', width: 220 },
-                { title: '费率', dataIndex: 'rate', key: 'rate' },
-                { title: '生效日期', dataIndex: 'eff', key: 'eff' },
+                { title: '类型', dataIndex: 'name', key: 'name', width: 180 },
+                { title: '费率', dataIndex: 'rate', key: 'rate', width: 90 },
+                {
+                  title: '生效日期',
+                  dataIndex: 'eff',
+                  key: 'eff',
+                  width: 230,
+                  render: (v: string) => (
+                    <span style={{ whiteSpace: 'nowrap' }}>{v}</span>
+                  ),
+                },
                 { title: 'MZL_PriceID', dataIndex: 'mzl', key: 'mzl' },
               ]}
               dataSource={fuelDetailRows(detail.payload, detail.MZL_PriceID)}
