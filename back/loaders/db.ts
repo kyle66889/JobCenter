@@ -72,14 +72,14 @@ export default async () => {
       }
     }
 
-    // FBD 中心：表为空时种子一条 fedex rate 示例
+    // FBD 中心：表为空时种子一条示例（类型与脚本/分发器一致：fedex_fuel_charge）
     const fbdCount = await FbdTaskModel.count();
     if (fbdCount === 0) {
       await FbdTaskModel.create({
-        title: 'FedEx Rate 更新（示例）',
-        type: 'fedex_rate',
+        title: 'FedEx 燃油附加费（示例）',
+        type: 'fedex_fuel_charge',
         source: 'manual',
-        payload: { note: '示例待审批数据，approve 后走占位更新', rates: {} },
+        payload: { note: '示例待审批数据；未配置 MZL_PriceID，approve 会提示未携带 id', rates: {} },
         status: FbdTaskStatus.pending,
         result: '',
         operator: '',
