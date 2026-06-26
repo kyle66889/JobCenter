@@ -271,6 +271,7 @@ export default function () {
           '/script': 'scripts',
           '/dependence': 'dependencies',
           '/log': 'logs',
+          '/diff': 'diff',
           '/setting': 'settings',
         };
         if (user?.isAdmin) return menuData;

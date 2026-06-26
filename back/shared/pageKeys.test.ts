@@ -8,10 +8,10 @@ import {
   assertNotLastAdmin,
 } from './pageKeys';
 
-test('PAGE_KEYS 覆盖 10 个页面（含 fbd）', () => {
+test('PAGE_KEYS 覆盖 11 个页面（含 diff、fbd）', () => {
   assert.deepStrictEqual([...PAGE_KEYS], [
     'dashboard', 'crons', 'subscriptions', 'envs',
-    'configs', 'scripts', 'dependencies', 'logs', 'settings', 'fbd',
+    'configs', 'scripts', 'dependencies', 'logs', 'diff', 'settings', 'fbd',
   ]);
 });
 

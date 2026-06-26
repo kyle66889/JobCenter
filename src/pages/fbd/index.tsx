@@ -80,6 +80,23 @@ const fmtTime = (s?: string) => {
   return isNaN(d.getTime()) ? s : d.toLocaleString();
 };
 
+// 把任务的 MZL_PriceID（对象或 JSON 字符串）整理成可读文本：要更新的生产库行 id
+const fmtMzlPriceId = (v: any) => {
+  let m = v;
+  if (typeof m === 'string') {
+    try {
+      m = JSON.parse(m);
+    } catch {
+      return m || '-';
+    }
+  }
+  if (!m || typeof m !== 'object') return '-';
+  const parts: string[] = [];
+  if (m.ground) parts.push(`Ground 行: ${m.ground}`);
+  if (m.express) parts.push(`Express 行: ${m.express}`);
+  return parts.length ? parts.join('　|　') : '-';
+};
+
 // 把 fedex_fuel_charge 的 payload（对象或 JSON 字符串）整理成详情表格数据
 const fuelDetailRows = (payload: any) => {
   let p = payload;
@@ -431,6 +448,7 @@ const FbdCenter = () => {
           <div>
             <p>来源：{detail.source}</p>
             <p>状态：{STATUS_LABEL[detail.status]}</p>
+            <p>更新目标 MZL_Priceid：{fmtMzlPriceId(detail.MZL_PriceID)}</p>
             <Table
               size="small"
               rowKey="key"

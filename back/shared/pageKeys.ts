@@ -1,6 +1,6 @@
 export const PAGE_KEYS = [
   'dashboard', 'crons', 'subscriptions', 'envs',
-  'configs', 'scripts', 'dependencies', 'logs', 'settings', 'fbd',
+  'configs', 'scripts', 'dependencies', 'logs', 'diff', 'settings', 'fbd',
 ] as const;
 export type PageKey = (typeof PAGE_KEYS)[number];
 
