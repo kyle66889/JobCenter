@@ -43,6 +43,7 @@ export default (app: Router) => {
 
   route.get(
     '/tasks/:id',
+    celebrate({ params: Joi.object({ id: Joi.number().required() }) }),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const fbdService = Container.get(FbdService);
@@ -77,6 +78,7 @@ export default (app: Router) => {
 
   route.put(
     '/tasks/:id/approve',
+    celebrate({ params: Joi.object({ id: Joi.number().required() }) }),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const fbdService = Container.get(FbdService);
@@ -91,6 +93,7 @@ export default (app: Router) => {
 
   route.put(
     '/tasks/:id/reject',
+    celebrate({ params: Joi.object({ id: Joi.number().required() }) }),
     async (req: Request, res: Response, next: NextFunction) => {
       try {
         const fbdService = Container.get(FbdService);
