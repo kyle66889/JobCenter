@@ -1,3 +1,4 @@
+// 枚举值会入库（FbdTask.status），不可随意调整
 export enum FbdTaskStatus {
   pending,   // 0 待审批
   approving, // 1 执行中

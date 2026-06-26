@@ -28,6 +28,7 @@ test('assertApprovable 仅放行 pending，其它状态抛错', () => {
   assert.throws(() => assertApprovable(FbdTaskStatus.done), /非待审批/);
   assert.throws(() => assertApprovable(FbdTaskStatus.rejected), /非待审批/);
   assert.throws(() => assertApprovable(FbdTaskStatus.approving), /非待审批/);
+  assert.throws(() => assertApprovable(FbdTaskStatus.failed), /非待审批/);
 });
 
 test('applyUpdate fedex_rate 返回成功摘要', async () => {
