@@ -52,24 +52,27 @@ const TYPE_OPTIONS = [
 
 // fedex_fuel_charge「详情」表格的行定义（类型 / 费率 / 生效日期）
 const FUEL_DETAIL_ROWS = [
-  { key: 'ground', name: 'FedEx Ground', rateKey: 'ground', effKey: 'ground_effective' },
+  { key: 'ground', name: 'FedEx Ground', rateKey: 'ground', effKey: 'ground_effective', mzlKey: 'ground' },
   {
     key: 'express',
     name: 'FedEx Express 国内包裹',
     rateKey: 'express_package',
     effKey: 'express_effective',
+    mzlKey: 'express',
   },
   {
     key: 'freight_rate',
     name: 'Express Freight 单价',
     rateKey: 'express_freight_rate',
     effKey: 'express_effective',
+    mzlKey: '',
   },
   {
     key: 'export_import',
     name: 'Express Freight 出口/进口',
     rateKey: 'export_import',
     effKey: 'export_import_effective',
+    mzlKey: '',
   },
 ];
 
@@ -80,25 +83,22 @@ const fmtTime = (s?: string) => {
   return isNaN(d.getTime()) ? s : d.toLocaleString();
 };
 
-// 把任务的 MZL_PriceID（对象或 JSON 字符串）整理成可读文本：要更新的生产库行 id
-const fmtMzlPriceId = (v: any) => {
+// 解析任务的 MZL_PriceID（对象或 JSON 字符串）为对象，失败返回 {}
+const parseMzl = (v: any) => {
   let m = v;
   if (typeof m === 'string') {
     try {
       m = JSON.parse(m);
     } catch {
-      return m || '-';
+      return {};
     }
   }
-  if (!m || typeof m !== 'object') return '-';
-  const parts: string[] = [];
-  if (m.ground) parts.push(`Ground 行: ${m.ground}`);
-  if (m.express) parts.push(`Express 行: ${m.express}`);
-  return parts.length ? parts.join('　|　') : '-';
+  return m && typeof m === 'object' ? m : {};
 };
 
-// 把 fedex_fuel_charge 的 payload（对象或 JSON 字符串）整理成详情表格数据
-const fuelDetailRows = (payload: any) => {
+// 把 fedex_fuel_charge 的 payload + MZL_PriceID 整理成详情表格数据
+// （每行带上对应的目标生产库行 id：Ground / Express 各一个，其余为空）
+const fuelDetailRows = (payload: any, mzlRaw: any) => {
   let p = payload;
   if (typeof p === 'string') {
     try {
@@ -108,11 +108,13 @@ const fuelDetailRows = (payload: any) => {
     }
   }
   if (!p || typeof p !== 'object') return [];
+  const mzl = parseMzl(mzlRaw);
   return FUEL_DETAIL_ROWS.filter((r) => p[r.rateKey]).map((r) => ({
     key: r.key,
     name: r.name,
     rate: p[r.rateKey],
     eff: p[r.effKey] || '-',
+    mzl: r.mzlKey ? mzl[r.mzlKey] || '' : '',
   }));
 };
 
@@ -448,7 +450,6 @@ const FbdCenter = () => {
           <div>
             <p>来源：{detail.source}</p>
             <p>状态：{STATUS_LABEL[detail.status]}</p>
-            <p>更新目标 MZL_Priceid：{fmtMzlPriceId(detail.MZL_PriceID)}</p>
             <Table
               size="small"
               rowKey="key"
@@ -457,8 +458,9 @@ const FbdCenter = () => {
                 { title: '类型', dataIndex: 'name', key: 'name', width: 220 },
                 { title: '费率', dataIndex: 'rate', key: 'rate' },
                 { title: '生效日期', dataIndex: 'eff', key: 'eff' },
+                { title: 'MZL_PriceID', dataIndex: 'mzl', key: 'mzl' },
               ]}
-              dataSource={fuelDetailRows(detail.payload)}
+              dataSource={fuelDetailRows(detail.payload, detail.MZL_PriceID)}
             />
           </div>
         ) : detail ? (
