@@ -13,19 +13,22 @@ function readConfigShVar(name: string): string | undefined {
   try {
     const file = path.join(config.configPath, 'config.sh');
     const content = fs.readFileSync(file, 'utf8');
-    const re = new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=\\s*(.+?)\\s*$`, 'gm');
-    let m: RegExpExecArray | null;
-    let val: string | undefined;
-    while ((m = re.exec(content))) val = m[1];
-    if (val === undefined) return undefined;
-    if (
-      (val.startsWith('"') && val.endsWith('"')) ||
-      (val.startsWith("'") && val.endsWith("'"))
-    ) {
-      return val.slice(1, -1);
+    // 逐行匹配（整串 + m 标志在某些情况下匹配不到，按行更稳）；取最后一次定义
+    const re = new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=\\s*(.+?)\\s*$`);
+    let raw: string | undefined;
+    for (const line of content.split(/\r?\n/)) {
+      const m = re.exec(line);
+      if (m) raw = m[1];
     }
-    const hashAt = val.indexOf(' #');
-    return (hashAt >= 0 ? val.slice(0, hashAt) : val).trim();
+    if (raw === undefined) return undefined;
+    const val = raw.trim();
+    // 带引号：取引号内（引号内的 # 不是注释）；不带引号：去掉行内 # 注释
+    if (val[0] === '"' || val[0] === "'") {
+      const end = val.indexOf(val[0], 1);
+      return end > 0 ? val.slice(1, end) : val.slice(1);
+    }
+    const h = val.search(/\s#/);
+    return (h >= 0 ? val.slice(0, h) : val).trim();
   } catch (_) {
     return undefined;
   }
