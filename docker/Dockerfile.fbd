@@ -34,4 +34,4 @@ COPY --from=build /app/node_modules/bcryptjs/ /ql/node_modules/bcryptjs/
 # SQL Server 驱动：sequelize mssql 方言需要 tedious。官方镜像没有。
 # 不能合并进 /ql/node_modules（pnpm 符号链接会与扁平目录冲突），故放独立目录，
 # 由 FbdPrdService 通过 sequelize 的 dialectModule 选项按该路径加载。
-COPY --from=build /tdinstall/node_modules/ /ql/fbd_modules/
+COPY --from=build /tdinstall/node_modules/ /ql/fbd_modules/node_modules/

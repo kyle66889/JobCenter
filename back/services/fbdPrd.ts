@@ -10,7 +10,7 @@ function loadTedious(): any {
   try {
     return require('tedious');
   } catch (_) {
-    return require('/ql/fbd_modules/tedious');
+    return require('/ql/fbd_modules/node_modules/tedious');
   }
 }
 
