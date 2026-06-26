@@ -103,28 +103,33 @@ def pick_current_row(data_rows):
 
 
 def extract(cells):
-    """按已知列位置提取，并做百分比校验。"""
+    """提取当前行的费率。
+
+    页面当前表格每行 7 列：
+      [0] Ground 生效周期  [1] Ground %       [2] Express 生效日期
+      [3] 国内包裹 %       [4] Freight 单价($/lb)
+      [5] 出口/进口(Export & Import) %        [6] 出口/进口 生效日期
+    注意：页面只有一个合并的 "Export & Import" 费率，没有单独的进口百分比，
+    第 [6] 列是日期而非百分比。
+
+    百分比列改用模式匹配（按出现顺序：Ground、国内包裹、出口/进口），
+    抗未来表格再插入日期列导致的列错位。
+    """
     def at(i):
         return cells[i] if i < len(cells) else ""
 
-    result = {
+    pcts = [c for c in cells if PCT_RE.match(c)]
+    rate = next((c for c in cells if "lb" in c.lower() or "/kg" in c.lower()), at(4))
+
+    return {
         "ground_effective": at(0),
-        "ground": at(1),
+        "ground": pcts[0] if len(pcts) >= 1 else at(1),
         "express_effective": at(2),
-        "express_package": at(3),
-        "express_freight_rate": at(4),
-        "export": at(5),
-        "import": at(6),
+        "express_package": pcts[1] if len(pcts) >= 2 else at(3),
+        "express_freight_rate": rate,
+        "export_import": pcts[-1] if len(pcts) >= 3 else at(5),
+        "export_import_effective": at(6),
     }
-    # 校验关键百分比列；若位置不符，退化为顺序扫描所有百分比
-    if not PCT_RE.match(result["ground"]):
-        pcts = [c for c in cells if PCT_RE.match(c)]
-        if pcts:
-            result["ground"] = pcts[0] if len(pcts) > 0 else result["ground"]
-            result["express_package"] = pcts[1] if len(pcts) > 1 else ""
-            result["export"] = pcts[-2] if len(pcts) >= 2 else ""
-            result["import"] = pcts[-1] if len(pcts) >= 1 else ""
-    return result
 
 
 def load_state():
@@ -147,8 +152,7 @@ def save_state(state):
 WATCH = [
     ("ground", "FedEx Ground"),
     ("express_package", "FedEx Express 国内包裹"),
-    ("export", "Express Freight 出口"),
-    ("import", "Express Freight 进口"),
+    ("export_import", "Express Freight 出口/进口"),
 ]
 
 
@@ -174,8 +178,8 @@ def main():
     log(f"  FedEx Ground          : {cur['ground']}")
     log(f"  FedEx Express 国内包裹 : {cur['express_package']}")
     log(f"  Express Freight 单价   : {cur['express_freight_rate']}")
-    log(f"  Express Freight 出口   : {cur['export']}")
-    log(f"  Express Freight 进口   : {cur['import']}")
+    log(f"  Express Freight 出口/进口: {cur['export_import']}")
+    log(f"  出口/进口 生效日期      : {cur['export_import_effective']}")
     log("=" * 48)
 
     prev = load_state()
