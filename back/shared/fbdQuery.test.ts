@@ -105,3 +105,11 @@ test('validateSqlQuery：含 MERGE → 拒绝', () => {
   assert.strictEqual(r.ok, false);
   assert.match(r.reason!, /写操作/);
 });
+
+test('validateSqlQuery：含 UNION → 拒绝', () => {
+  const r = validateSqlQuery(
+    "SELECT TOP 10 * FROM T WITH(NOLOCK) UNION SELECT TOP 10 * FROM U WITH(NOLOCK)",
+  );
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason!, /写操作/);
+});

@@ -23,7 +23,7 @@ export function validateSqlQuery(sql: string): QueryValidationResult {
   if (!/\bNOLOCK\b/.test(upper)) {
     return { ok: false, reason: '缺少 NOLOCK（如 WITH(NOLOCK)）' };
   }
-  if (/\b(UPDATE|INSERT|DELETE|DROP|TRUNCATE|ALTER|CREATE|EXEC|EXECUTE|MERGE|GRANT|BACKUP)\b/.test(upper)) {
+  if (/\b(UPDATE|INSERT|DELETE|DROP|TRUNCATE|ALTER|CREATE|EXEC|EXECUTE|MERGE|GRANT|BACKUP|UNION)\b/.test(upper)) {
     return { ok: false, reason: '不允许写操作关键字' };
   }
   return { ok: true };
