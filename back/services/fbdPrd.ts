@@ -143,6 +143,6 @@ export default class FbdPrdService {
     const db = await this.getDb();
     const rows: any[] = await db.query(sql, { type: QueryTypes.SELECT });
     const limited = rows.slice(0, 500);
-    return { rows: limited, count: limited.length };
+    return { rows: limited, count: rows.length };
   }
 }
