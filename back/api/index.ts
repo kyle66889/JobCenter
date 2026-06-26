@@ -14,6 +14,7 @@ import dashboard from './dashboard';
 import health from './health';
 import users from './users';
 import roles from './roles';
+import fbd from './fbd';
 
 export default () => {
   const app = Router();
@@ -32,6 +33,7 @@ export default () => {
   health(app);
   users(app);
   roles(app);
+  fbd(app);
 
   return app;
 };
