@@ -14,6 +14,7 @@ import { RoleModel } from '../data/role';
 import { UserRoleModel } from '../data/userRole';
 import { RolePermissionModel } from '../data/rolePermission';
 import { FbdTaskModel } from '../data/fbdTask';
+import { FbdTaskStatus } from '../shared/fbd';
 
 export default async () => {
   try {
@@ -78,7 +79,7 @@ export default async () => {
         type: 'fedex_rate',
         source: 'manual',
         payload: { note: '示例待审批数据，approve 后走占位更新', rates: {} },
-        status: 0,
+        status: FbdTaskStatus.pending,
         result: '',
         operator: '',
         timestamp: new Date().toString(),
