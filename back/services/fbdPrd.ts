@@ -4,6 +4,16 @@ import winston from 'winston';
 import { decrypt } from '../shared/fbdCrypto';
 import { buildFuelUpdates } from '../shared/fbdFuel';
 
+// 加载 tedious（SQL Server 驱动）。本地开发它在 node_modules 里能正常 require；
+// 容器运行镜像里它被装在 /ql/fbd_modules（见 docker/Dockerfile.fbd），故做路径兜底。
+function loadTedious(): any {
+  try {
+    return require('tedious');
+  } catch (_) {
+    return require('/ql/fbd_modules/tedious');
+  }
+}
+
 @Service()
 export default class FbdPrdService {
   private db?: Sequelize;
@@ -23,6 +33,7 @@ export default class FbdPrdService {
     try {
       db = new Sequelize({
         dialect: 'mssql',
+        dialectModule: loadTedious(),
         host: conf.host,
         port: conf.port || 1433,
         database: conf.database,

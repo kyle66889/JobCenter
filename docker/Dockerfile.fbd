@@ -32,6 +32,6 @@ COPY --from=build /app/static/dist/ /ql/static/dist/
 # 补充新增运行时依赖（官方镜像 node_modules 没有 bcryptjs）
 COPY --from=build /app/node_modules/bcryptjs/ /ql/node_modules/bcryptjs/
 # SQL Server 驱动：sequelize mssql 方言需要 tedious。官方镜像没有。
-# 从 build 阶段的扁平安装目录把 tedious + 其传递依赖合并进 /ql/node_modules，
-# node 即可 require('tedious')。
-COPY --from=build /tdinstall/node_modules/ /ql/node_modules/
+# 不能合并进 /ql/node_modules（pnpm 符号链接会与扁平目录冲突），故放独立目录，
+# 由 FbdPrdService 通过 sequelize 的 dialectModule 选项按该路径加载。
+COPY --from=build /tdinstall/node_modules/ /ql/fbd_modules/
