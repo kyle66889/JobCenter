@@ -6,6 +6,7 @@ import winston from 'winston';
 import config from '../config';
 import { decrypt } from '../shared/fbdCrypto';
 import { buildFuelUpdates } from '../shared/fbdFuel';
+import { validateSqlQuery } from '../shared/fbdQuery';
 
 // 后端 Node 进程不会自动加载 config.sh（config.sh 只在 shell 任务执行时被 source）。
 // 故所需变量在 process.env 缺失时，直接从 config.sh 文件里解析。
@@ -132,5 +133,16 @@ export default class FbdPrdService {
       );
     }
     return parts.join('；');
+  }
+
+  public async queryRaw(sql: string): Promise<{ rows: any[]; count: number }> {
+    const validation = validateSqlQuery(sql);
+    if (!validation.ok) {
+      throw new Error(validation.reason);
+    }
+    const db = await this.getDb();
+    const rows: any[] = await db.query(sql, { type: QueryTypes.SELECT });
+    const limited = rows.slice(0, 500);
+    return { rows: limited, count: limited.length };
   }
 }
