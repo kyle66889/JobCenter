@@ -8,6 +8,7 @@ import config from '@/utils/config';
 const PAGE_LABEL_KEY: Record<string, string> = {
   dashboard: '仪表盘',
   crons: '定时任务',
+  fbd: 'FBD 中心',
   subscriptions: '订阅管理',
   envs: '环境变量',
   configs: '配置文件',

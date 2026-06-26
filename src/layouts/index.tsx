@@ -264,6 +264,7 @@ export default function () {
         const pathToPageKey: Record<string, string> = {
           '/dashboard': 'dashboard',
           '/crontab': 'crons',
+          '/fbd': 'fbd',
           '/subscription': 'subscriptions',
           '/env': 'envs',
           '/config': 'configs',
