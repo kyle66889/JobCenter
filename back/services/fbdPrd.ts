@@ -19,24 +19,30 @@ export default class FbdPrdService {
       throw new Error('缺少 FBD_PRD_DB_DSN_ENC 或 FBD_SECRET_KEY');
     }
     const conf = JSON.parse(decrypt(enc, key));
-    const db = new Sequelize({
-      dialect: 'mssql',
-      host: conf.host,
-      port: conf.port || 1433,
-      database: conf.database,
-      username: conf.username,
-      password: conf.password,
-      logging: false,
-      dialectOptions: {
-        options: {
-          encrypt: conf.encrypt !== false,
-          trustServerCertificate: conf.trustServerCertificate !== false,
+    let db: Sequelize | undefined;
+    try {
+      db = new Sequelize({
+        dialect: 'mssql',
+        host: conf.host,
+        port: conf.port || 1433,
+        database: conf.database,
+        username: conf.username,
+        password: conf.password,
+        logging: false,
+        dialectOptions: {
+          options: {
+            encrypt: conf.encrypt !== false,
+            trustServerCertificate: conf.trustServerCertificate !== false,
+          },
         },
-      },
-    });
-    await db.authenticate();
-    this.db = db;
-    return db;
+      });
+      await db.authenticate();
+      this.db = db;
+      return db;
+    } catch (e) {
+      if (db) await db.close().catch(() => {});
+      throw e;
+    }
   }
 
   // 按任务类型分发；mzlPriceIds 由调用方（approve）从任务 MZL_PriceID 列传入
