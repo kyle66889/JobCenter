@@ -13,6 +13,7 @@ import { UserModel } from '../data/user';
 import { RoleModel } from '../data/role';
 import { UserRoleModel } from '../data/userRole';
 import { RolePermissionModel } from '../data/rolePermission';
+import { FbdTaskModel } from '../data/fbdTask';
 
 export default async () => {
   try {
@@ -29,6 +30,7 @@ export default async () => {
     await RoleModel.sync();
     await UserRoleModel.sync();
     await RolePermissionModel.sync();
+    await FbdTaskModel.sync();
 
     // 初始化新增字段
     const migrations = [
@@ -66,6 +68,21 @@ export default async () => {
       } catch (error) {
         // Column already exists or other error, continue
       }
+    }
+
+    // FBD 中心：表为空时种子一条 fedex rate 示例
+    const fbdCount = await FbdTaskModel.count();
+    if (fbdCount === 0) {
+      await FbdTaskModel.create({
+        title: 'FedEx Rate 更新（示例）',
+        type: 'fedex_rate',
+        source: 'manual',
+        payload: { note: '示例待审批数据，approve 后走占位更新', rates: {} },
+        status: 0,
+        result: '',
+        operator: '',
+        timestamp: new Date().toString(),
+      } as any);
     }
 
     const seedRbac = (await import('../services/auth-seed')).default;
