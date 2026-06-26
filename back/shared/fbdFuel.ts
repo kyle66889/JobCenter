@@ -37,6 +37,9 @@ export function buildFuelUpdates(payload: any, mzlPriceIds: any): FuelUpdate[] {
     if (c.pct === undefined || c.pct === null || c.pct === '') {
       throw new Error(`${c.label} 配置了 MZL_Priceid 但 payload 缺少对应费率`);
     }
+    if (idList.some((id) => !/^\d+$/.test(id))) {
+      throw new Error(`${c.label} 含非数字 MZL_Priceid: ${idList.join(',')}`);
+    }
     updates.push({ label: c.label, rate: pctToFraction(c.pct), ids: idList });
   }
   return updates;

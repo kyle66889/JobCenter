@@ -54,3 +54,10 @@ test('buildFuelUpdates：配了 id 但缺费率 → 抛清晰错误', () => {
     /Ground 配置了 MZL_Priceid 但 payload 缺少对应费率/,
   );
 });
+
+test('buildFuelUpdates：非数字 id 抛错', () => {
+  assert.throws(
+    () => buildFuelUpdates({ ground: '16.50%' }, { ground: '1,abc' }),
+    /含非数字 MZL_Priceid/,
+  );
+});
