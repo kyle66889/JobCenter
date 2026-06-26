@@ -175,3 +175,47 @@ Service 层状态机单测：
 - 改 `src/layouts/defaultProps.tsx`（菜单）
 - 改 `src/layouts/index.tsx`（pathToPageKey）
 - 改 `src/pages/setting/roleManage.tsx`（PAGE_LABEL_KEY）
+
+---
+
+## 10. 增量（2026-06-26）：创建表单 + 状态分类 Tab
+
+在第一期「列表 + 详情 + 审批」基础上，补齐两项，使 FBD 中心与「定时任务」页一致：**可查询、可创建、按状态分类**。后端列表/创建接口本就存在，主要是前端 UI + 一处列表多状态过滤。
+
+### 10.1 状态分类 Tab（替换原「状态下拉过滤」）
+
+5 个底层状态归到 3 个 Tab（无「全部」页签），默认选「待处理」：
+
+| Tab | 含底层状态 | 传给后端的 `status` |
+|-----|-----------|------------------|
+| 待处理 | 待审批(0) + 执行中(1) | `0,1` |
+| 已完成 | 已通过(2) | `2` |
+| 处理失败 | 失败(3) + 已拒绝(4) | `3,4` |
+
+切 Tab → 回第 1 页 → 按该组状态重新拉列表。
+
+**后端 `list` 改为支持多状态**（`back/services/fbd.ts`）：`status` 参数接收逗号分隔串，
+解析为数字数组——长度 1 用等值，>1 用 `Op.in`；空/非法忽略。`back/api/fbd.ts` 的 GET `/tasks`
+不再对 `status` 做 `Number()`，原样把字符串传给 service。create/approve/reject/detail 不变。
+
+### 10.2 创建任务
+
+标题栏右侧加「创建任务」主按钮（仿定时任务），弹出表单 Modal：
+
+| 字段 | 控件 | 规则 |
+|------|------|------|
+| 名称 | Input | 必填 |
+| 类型 | Select | 必填。预设 `fedex_fuel_charge`(FedexFuelCharge) / `sql_monitor`(Sql Monitor) / `fedex_zone`(Fedex Zone) / 自定义 |
+| 自定义类型 | Input | 仅「类型=自定义」时显示，必填，存任意字符串 |
+| 来源 | Input | 选填，默认 `manual` |
+| payload | TextArea | 选填，提交前 `JSON.parse` 校验，非法则提示不提交 |
+
+提交 → `POST /api/fbd/tasks` → 成功后关弹窗、跳「待处理」Tab、刷新（新条目恒为待审批）。
+
+> 注意：`applyUpdate` 目前只认 `fedex_rate`，新类型 approve 时会落 default 分支转 failed。
+> 与占位设计一致——接真实写库逻辑时给每个 `case` 补分支即可，本期不接。
+
+### 10.3 改动文件（增量）
+- 改 `src/pages/fbd/index.tsx`（Tab + 创建表单 Modal）
+- 改 `back/services/fbd.ts`（`list` 支持逗号分隔多状态）
+- 改 `back/api/fbd.ts`（GET `/tasks` 的 `status` 原样传字符串）

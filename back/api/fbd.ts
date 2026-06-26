@@ -28,7 +28,7 @@ export default (app: Router) => {
           searchValue: req.query.searchValue as string,
           status:
             req.query.status !== undefined && req.query.status !== ''
-              ? Number(req.query.status)
+              ? (req.query.status as string)
               : undefined,
           page: req.query.page ? Number(req.query.page) : undefined,
           size: req.query.size ? Number(req.query.size) : undefined,
@@ -36,6 +36,21 @@ export default (app: Router) => {
         return res.send({ code: 200, data });
       } catch (e) {
         logger.error('🔥 error: %o', e);
+        return next(e);
+      }
+    },
+  );
+
+  route.get(
+    '/tasks/stats',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const fbdService = Container.get(FbdService);
+        const data = await fbdService.counts(
+          req.query.searchValue as string | undefined,
+        );
+        return res.send({ code: 200, data });
+      } catch (e) {
         return next(e);
       }
     },
