@@ -3,6 +3,7 @@ import { NextFunction, Request, Response, Router } from 'express';
 import { Container } from 'typedi';
 import { Logger } from 'winston';
 import FbdService from '../services/fbd';
+import FbdPrdService from '../services/fbdPrd';
 import RbacService from '../services/rbac';
 
 const route = Router();
@@ -131,6 +132,22 @@ export default (app: Router) => {
         return res.send({ code: 200 });
       } catch (e) {
         return next(e);
+      }
+    },
+  );
+
+  route.post(
+    '/query',
+    celebrate({
+      body: Joi.object({ sql: Joi.string().min(1).required() }),
+    }),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const fbdPrdService = Container.get(FbdPrdService);
+        const data = await fbdPrdService.queryRaw(req.body.sql);
+        return res.send({ code: 200, data });
+      } catch (e: any) {
+        return res.send({ code: 400, message: e?.message || String(e) });
       }
     },
   );
