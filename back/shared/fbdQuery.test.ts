@@ -113,3 +113,19 @@ test('validateSqlQuery：含 UNION → 拒绝', () => {
   assert.strictEqual(r.ok, false);
   assert.match(r.reason!, /写操作/);
 });
+
+test('validateSqlQuery：TOP 超过 1000 → 拒绝', () => {
+  const r = validateSqlQuery(
+    "SELECT TOP 1001 * FROM T WITH(NOLOCK)",
+  );
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason!, /TOP 值/);
+});
+
+test('validateSqlQuery：含 OPENROWSET → 拒绝', () => {
+  const r = validateSqlQuery(
+    "SELECT TOP 10 * FROM OPENROWSET('SQLNCLI', 'x', 'SELECT 1') AS r WITH(NOLOCK)",
+  );
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason!, /危险/);
+});
