@@ -129,3 +129,16 @@ test('validateSqlQuery：含 OPENROWSET → 拒绝', () => {
   assert.strictEqual(r.ok, false);
   assert.match(r.reason!, /危险/);
 });
+
+test('surcharge 周检的真实 SQL（去注释/分号后）通过校验', () => {
+  const sql =
+    "SELECT TOP 100 s.ServiceType, s.Name AS APIFeeName, s.Explain AS SampleExplain, " +
+    "DATEADD(MILLISECOND, c.ms % 1000, DATEADD(SECOND, c.ms / 1000, CAST('1970-01-01' AS DATETIME2(3)))) AS CreateTime " +
+    "FROM ShippingFeeOtherItem s WITH (NOLOCK) " +
+    "CROSS APPLY (SELECT (s.Id / 4194304) + 1288834974657 AS ms) c " +
+    "WHERE NOT EXISTS (SELECT 1 FROM MZL_FinanceCustomerBillItem i WITH (NOLOCK) WHERE i.Name = s.Name) " +
+    "AND s.ServiceType = 'FedEx' AND s.Name not in ('基础运费','netFreight') " +
+    "AND DATEADD(MILLISECOND, c.ms % 1000, DATEADD(SECOND, c.ms / 1000, CAST('1970-01-01' AS DATETIME2(3)))) > '2025-10-01' " +
+    "ORDER BY s.ServiceType, s.Name";
+  assert.strictEqual(validateSqlQuery(sql).ok, true);
+});
