@@ -118,6 +118,41 @@ const fuelDetailRows = (payload: any, mzlRaw: any) => {
   }));
 };
 
+const fmtSampleFee = (explain?: string) => {
+  if (!explain) return '-';
+  return explain.startsWith('>Fee:') ? explain.slice(5) : explain;
+};
+
+const fmtCreateTime = (s?: string) => {
+  if (!s) return '-';
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? s : d.toLocaleString();
+};
+
+// Surcharge 类型：payload.rows → 详情表格（列结构与 fuel 详情一致）
+const surchargeDetailRows = (payload: any) => {
+  let p = payload;
+  if (typeof p === 'string') {
+    try {
+      p = JSON.parse(p);
+    } catch {
+      return [];
+    }
+  }
+  const rows = p?.rows;
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r: any, i: number) => ({
+    key: String(i),
+    name: r.APIFeeName || r.Name || '-',
+    rate: fmtSampleFee(r.SampleExplain || r.Explain),
+    eff: fmtCreateTime(r.CreateTime),
+    mzl: r.ServiceType || '-',
+  }));
+};
+
+const hasDetailTable = (type?: string) =>
+  type === 'fedex_fuel_charge' || type === 'Surcharge';
+
 const FbdCenter = () => {
   const { headerStyle } = useOutletContext<SharedContext>();
   const [data, setData] = useState<any[]>([]);
@@ -283,7 +318,7 @@ const FbdCenter = () => {
       render: (title: string, record: any) => (
         <Space>
           <span>{title}</span>
-          {record.type === 'fedex_fuel_charge' && (
+          {hasDetailTable(record.type) && (
             <a onClick={() => openDetail(record, 'detail')}>详情</a>
           )}
         </Space>
@@ -304,7 +339,7 @@ const FbdCenter = () => {
       render: (_: any, record: any) => (
         <Space>
           <a onClick={() => openDetail(record, 'log')}>
-            {record.type === 'fedex_fuel_charge' ? '日志' : '查看'}
+            {hasDetailTable(record.type) ? '日志' : '查看'}
           </a>
           {record.status === 0 && (
             <>
@@ -453,21 +488,57 @@ const FbdCenter = () => {
               size="small"
               rowKey="key"
               pagination={false}
-              columns={[
-                { title: '类型', dataIndex: 'name', key: 'name', width: 180 },
-                { title: '费率', dataIndex: 'rate', key: 'rate', width: 90 },
-                {
-                  title: '生效日期',
-                  dataIndex: 'eff',
-                  key: 'eff',
-                  width: 230,
-                  render: (v: string) => (
-                    <span style={{ whiteSpace: 'nowrap' }}>{v}</span>
-                  ),
-                },
-                { title: 'MZL_PriceID', dataIndex: 'mzl', key: 'mzl' },
-              ]}
-              dataSource={fuelDetailRows(detail.payload, detail.MZL_PriceID)}
+              columns={
+                detail.type === 'Surcharge'
+                  ? [
+                      {
+                        title: '类型',
+                        dataIndex: 'name',
+                        key: 'name',
+                        width: 280,
+                      },
+                      {
+                        title: '样例费率',
+                        dataIndex: 'rate',
+                        key: 'rate',
+                        width: 100,
+                      },
+                      {
+                        title: '收录时间',
+                        dataIndex: 'eff',
+                        key: 'eff',
+                        width: 180,
+                        render: (v: string) => (
+                          <span style={{ whiteSpace: 'nowrap' }}>{v}</span>
+                        ),
+                      },
+                      {
+                        title: '承运商',
+                        dataIndex: 'mzl',
+                        key: 'mzl',
+                        width: 100,
+                      },
+                    ]
+                  : [
+                      { title: '类型', dataIndex: 'name', key: 'name', width: 180 },
+                      { title: '费率', dataIndex: 'rate', key: 'rate', width: 90 },
+                      {
+                        title: '生效日期',
+                        dataIndex: 'eff',
+                        key: 'eff',
+                        width: 230,
+                        render: (v: string) => (
+                          <span style={{ whiteSpace: 'nowrap' }}>{v}</span>
+                        ),
+                      },
+                      { title: 'MZL_PriceID', dataIndex: 'mzl', key: 'mzl' },
+                    ]
+              }
+              dataSource={
+                detail.type === 'Surcharge'
+                  ? surchargeDetailRows(detail.payload)
+                  : fuelDetailRows(detail.payload, detail.MZL_PriceID)
+              }
             />
           </div>
         ) : detail ? (

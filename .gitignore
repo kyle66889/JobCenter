@@ -18,6 +18,7 @@
 /docker/data/scripts/*
 !/docker/data/scripts/fedex_fuel_surcharge.py
 !/docker/data/scripts/fedex_zone_chart.py
+!/docker/data/scripts/fbd_surcharge_check.py
 
 # misc
 .DS_Store
