@@ -15,6 +15,7 @@ const PAGE_LABEL_KEY: Record<string, string> = {
   scripts: '脚本管理',
   dependencies: '依赖管理',
   logs: '日志管理',
+  diff: '对比工具',
   settings: '系统设置',
 };
 const pageLabel = (k: string) => {

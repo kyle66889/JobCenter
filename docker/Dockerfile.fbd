@@ -18,6 +18,11 @@ RUN pnpm install
 COPY . .
 ENV NODE_OPTIONS=--max-old-space-size=4096
 RUN npm run build:back && npm run build:front
+# 单独用 npm 把 tedious 及其传递依赖装成「扁平」node_modules，供运行镜像 COPY。
+# （不能在运行镜像内对 qinglong 的 pnpm 式 /ql/node_modules 跑 npm install——npm 会崩。）
+RUN mkdir -p /tdinstall && cd /tdinstall \
+    && npm init -y >/dev/null 2>&1 \
+    && npm install --no-audit --no-fund tedious@19.2.1
 
 FROM whyour/qinglong:latest
 # 覆盖后端编译产物（镜像以 node /ql/static/build/app.js 运行后端）
@@ -26,3 +31,7 @@ COPY --from=build /app/static/build/ /ql/static/build/
 COPY --from=build /app/static/dist/ /ql/static/dist/
 # 补充新增运行时依赖（官方镜像 node_modules 没有 bcryptjs）
 COPY --from=build /app/node_modules/bcryptjs/ /ql/node_modules/bcryptjs/
+# SQL Server 驱动：sequelize mssql 方言需要 tedious。官方镜像没有。
+# 不能合并进 /ql/node_modules（pnpm 符号链接会与扁平目录冲突），故放独立目录，
+# 由 FbdPrdService 通过 sequelize 的 dialectModule 选项按该路径加载。
+COPY --from=build /tdinstall/node_modules/ /ql/fbd_modules/node_modules/

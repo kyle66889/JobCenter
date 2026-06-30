@@ -87,8 +87,11 @@ async function applyUpdate(type: string, payload: any): Promise<string> {
 | GET | `/api/fbd/tasks` | pageKey `fbd` | 列表（search/status/page/size） |
 | GET | `/api/fbd/tasks/:id` | pageKey `fbd` | 详情含 payload |
 | POST | `/api/fbd/tasks` | pageKey `fbd` | 新建 / 脚本 push（Joi 校验 title/type/payload） |
-| PUT | `/api/fbd/tasks/:id/approve` | **Admin only** | 触发状态机 |
-| PUT | `/api/fbd/tasks/:id/reject` | **Admin only** | pending → rejected |
+| PUT | `/api/fbd/tasks/:id/approve` | fbd 页面权限 | 触发状态机 |
+| PUT | `/api/fbd/tasks/:id/reject` | fbd 页面权限 | pending → rejected |
+
+> 更新（2026-06-26）：审批权限由「仅 Admin」改为「有 fbd 页面权限即可」。
+> 前端去掉 isAdmin 门，后端 `isAdminOnlyPath` 不再包含 approve/reject（仅 `fbd` pageKey 鉴权）。
 | DELETE | `/api/fbd/tasks` | pageKey `fbd` | 批量删除 |
 
 **RBAC 接线（`back/shared/pageKeys.ts`）：**

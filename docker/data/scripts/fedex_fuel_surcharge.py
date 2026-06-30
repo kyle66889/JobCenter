@@ -281,15 +281,23 @@ def main():
         if old is not None and new and old != new:
             changes.append(f"{label}: {old} → {new}")
 
-    if changes:
-        log("[变化] 检测到以下变化，生成待审批任务并发邮件提醒：")
-        for c in changes:
-            log("  - " + c)
-        # 仅在费率变化时：① 生成一条待审批 FBD 任务 ② 邮件通知相关人员
+    # FEDEX_FUEL_FORCE_FBD=1：无论是否有变化，都生成待审批任务并发邮件（测试/强制用）
+    force = os.environ.get("FEDEX_FUEL_FORCE_FBD", "") == "1"
+
+    if changes or force:
+        if changes:
+            log("[变化] 检测到以下变化，生成待审批任务并发邮件提醒：")
+            for c in changes:
+                log("  - " + c)
+        else:
+            log("[强制] FEDEX_FUEL_FORCE_FBD=1，无变化也生成待审批任务并发提醒。")
+        # ① 生成一条待审批 FBD 任务 ② 邮件通知相关人员
         push_fbd_task(cur, changes)
+        change_lines = "\n".join(changes) if changes else "（无费率变化，强制触发）"
+        title_word = "发生变化" if changes else "（强制触发）"
         content = (
-            "FedEx 燃油附加费发生变化：\n\n"
-            + "\n".join(changes)
+            f"FedEx 燃油附加费{title_word}：\n\n"
+            + change_lines
             + f"\n\n当前生效周期(Ground): {cur['ground_effective']}"
             + f"\n来源: {URL}"
             + "\n\n请到 FBD 中心审批：待处理"

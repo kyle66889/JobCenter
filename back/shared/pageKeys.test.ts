@@ -8,10 +8,10 @@ import {
   assertNotLastAdmin,
 } from './pageKeys';
 
-test('PAGE_KEYS 覆盖 10 个页面（含 fbd）', () => {
+test('PAGE_KEYS 覆盖 11 个页面（含 diff、fbd）', () => {
   assert.deepStrictEqual([...PAGE_KEYS], [
     'dashboard', 'crons', 'subscriptions', 'envs',
-    'configs', 'scripts', 'dependencies', 'logs', 'settings', 'fbd',
+    'configs', 'scripts', 'dependencies', 'logs', 'diff', 'settings', 'fbd',
   ]);
 });
 
@@ -55,9 +55,9 @@ test('resolvePageKey 把 /api/fbd 映射到 fbd', () => {
   assert.strictEqual(resolvePageKey('/api/fbd/tasks/5'), 'fbd');
 });
 
-test('isAdminOnlyPath：fbd 审批/拒绝端点要求 Admin，列表不要求', () => {
-  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5/approve'), true);
-  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5/reject'), true);
+test('isAdminOnlyPath：fbd 端点都不要求 Admin（有 fbd 页面即可审批）', () => {
+  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5/approve'), false);
+  assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5/reject'), false);
   assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks'), false);
   assert.strictEqual(isAdminOnlyPath('/api/fbd/tasks/5'), false);
 });
