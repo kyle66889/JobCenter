@@ -15,6 +15,7 @@ import { createPrdSequelize } from '../services/fbdPrdConn';
   }
   const db = createPrdSequelize();
   try {
+    await db.authenticate();
     const rows = await db.query(sql, { type: QueryTypes.SELECT });
     await new Promise<void>((resolve, reject) =>
       process.stdout.write(
