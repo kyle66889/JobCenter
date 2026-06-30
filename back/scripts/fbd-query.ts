@@ -16,7 +16,12 @@ import { createPrdSequelize } from '../services/fbdPrdConn';
   const db = createPrdSequelize();
   try {
     const rows = await db.query(sql, { type: QueryTypes.SELECT });
-    process.stdout.write(JSON.stringify({ rows, count: rows.length }));
+    await new Promise<void>((resolve, reject) =>
+      process.stdout.write(
+        JSON.stringify({ rows, count: rows.length }) + '\n',
+        (e) => (e ? reject(e) : resolve()),
+      ),
+    );
     await db.close();
     process.exit(0);
   } catch (e: any) {
