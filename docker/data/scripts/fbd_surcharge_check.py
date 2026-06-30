@@ -99,8 +99,10 @@ def push_fbd_task(rows):
         conn.commit()
         conn.close()
         log(f"[FBD] 已生成待审批任务：{title}")
+        return True
     except Exception as e:  # noqa: BLE001
         log(f"[FBD] 生成任务失败: {e}")
+        return False
 
 
 def try_notify(rows):
@@ -129,8 +131,10 @@ def main():
     if not rows:
         log("[结果] 无新增 surcharge 项，不建任务、不发邮件。")
         return
-    push_fbd_task(rows)
-    try_notify(rows)
+    if push_fbd_task(rows):
+        try_notify(rows)
+    else:
+        log("[结果] 任务生成失败，跳过邮件。")
 
 
 if __name__ == "__main__":
