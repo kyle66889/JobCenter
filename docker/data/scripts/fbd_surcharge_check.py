@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 
 DB_FILE = os.path.normpath(
@@ -21,6 +22,8 @@ CLI = "/ql/static/build/scripts/fbd-query.js"
 FBD_TYPE = "Surcharge"
 FBD_SOURCE = "FedEx Surcharge 检查"
 TASK_NAME = "FedEx Surcharge 检查"
+QUERY_TIMEOUT = 90   # Node CLI / SQL Server 查询超时（秒）
+NOTIFY_TIMEOUT = 45  # 邮件通知超时（秒）；notify.send 内 SMTP 无 socket 超时，会无限阻塞
 
 # 注意：去掉了原 SQL 末尾的 `-- 注释` 和分号，否则过不了查询校验
 SQL = (
@@ -43,9 +46,20 @@ def log(msg):
 
 def run_query():
     """调容器内 Node CLI 执行查询，返回 rows 列表；失败抛异常。"""
-    proc = subprocess.run(
-        ["node", CLI, SQL], capture_output=True, text=True, timeout=120
-    )
+    if not os.path.isfile(CLI):
+        raise RuntimeError(
+            f"查询 CLI 不存在: {CLI}（需先 docker compose build 构建 fbd-query.js）"
+        )
+    log(f"[查询] 调用 Node CLI（超时 {QUERY_TIMEOUT}s）...")
+    try:
+        proc = subprocess.run(
+            ["node", CLI, SQL],
+            capture_output=True,
+            text=True,
+            timeout=QUERY_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"查询 CLI 超时（>{QUERY_TIMEOUT}s）") from e
     if proc.returncode != 0:
         raise RuntimeError(
             f"查询 CLI 失败: {proc.stderr.strip() or proc.stdout.strip()}"
@@ -105,27 +119,55 @@ def push_fbd_task(rows):
         return False
 
 
+def format_notify_table(rows):
+    """生成与 FBD 详情表格一致的纯文本表格（用于邮件正文）。"""
+    header = f"{'类型':<42} {'样例费率':<12} {'收录时间':<22} {'承运商'}"
+    sep = '-' * len(header)
+    lines = [header, sep]
+    for r in rows:
+        name = str(r.get('APIFeeName') or r.get('Name') or '')[:42]
+        explain = str(r.get('SampleExplain') or r.get('Explain') or '')
+        rate = explain[5:] if explain.startswith('>Fee:') else explain
+        ct_raw = str(r.get('CreateTime') or '')
+        ct = ct_raw[:19].replace('T', ' ') if ct_raw else '-'
+        carrier = str(r.get('ServiceType') or 'FedEx')
+        lines.append(f"{name:<42} {rate:<12} {ct:<22} {carrier}")
+    return '\n'.join(lines)
+
+
 def try_notify(rows):
-    try:
-        from notify import send, push_config
-        recipients = task_recipients()
-        if recipients:
-            push_config["SMTP_EMAIL_TO"] = recipients
-        preview = "\n".join(
-            f"- {r.get('APIFeeName')} ({r.get('ServiceType')})" for r in rows[:20]
+    """发邮件；带超时，避免 SMTP 连接卡住导致整个任务永不结束。"""
+
+    def _send():
+        try:
+            from notify import send, push_config
+
+            recipients = task_recipients()
+            if recipients:
+                push_config["SMTP_EMAIL_TO"] = recipients
+            table = format_notify_table(rows)
+            content = (
+                f"检测到 {len(rows)} 个新增 FedEx Surcharge 项待确认：\n\n"
+                f"{table}\n\n"
+                "请到 FBD 中心 → 待处理 → 详情 查看并确认。"
+            )
+            send("FedEx 新增 Surcharge 项待确认", content)
+        except Exception as e:  # noqa: BLE001
+            log(f"[通知] 发送失败（不影响结果）: {e}")
+
+    log(f"[通知] 发送邮件（最多等待 {NOTIFY_TIMEOUT}s）...")
+    t = threading.Thread(target=_send, daemon=True)
+    t.start()
+    t.join(timeout=NOTIFY_TIMEOUT)
+    if t.is_alive():
+        log(
+            f"[通知] 发送超时（>{NOTIFY_TIMEOUT}s），任务继续结束"
+            "（FBD 任务已生成，可稍后查日志或 FBD 中心）"
         )
-        content = (
-            f"检测到 {len(rows)} 个新增 FedEx Surcharge 项待确认：\n\n"
-            + preview
-            + ("\n..." if len(rows) > 20 else "")
-            + "\n\n请到 FBD 中心确认。"
-        )
-        send("FedEx 新增 Surcharge 项待确认", content)
-    except Exception as e:  # noqa: BLE001
-        log(f"[通知] 发送失败（不影响结果）: {e}")
 
 
 def main():
+    log("[开始] FedEx Surcharge 检查")
     rows = run_query()
     log(f"[查询] 返回 {len(rows)} 行")
     if not rows:

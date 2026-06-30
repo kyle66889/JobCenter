@@ -58,10 +58,13 @@ export function createPrdSequelize(): Sequelize {
     username: conf.username,
     password: conf.password,
     logging: false,
+    pool: { max: 1, min: 0, idle: 10000, acquire: 30000 },
     dialectOptions: {
       options: {
         encrypt: conf.encrypt !== false,
         trustServerCertificate: conf.trustServerCertificate !== false,
+        connectTimeout: 30000,
+        requestTimeout: 60000,
       },
     },
   });
