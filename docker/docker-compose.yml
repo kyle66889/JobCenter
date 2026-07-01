@@ -27,3 +27,7 @@ services:
 
 volumes:
   qldata:
+    # external：卷已由迁移脚本创建并灌入数据(docker_qldata)，compose 只引用不接管，
+    # 既消除 "volume already exists" 警告，也避免 `docker compose down -v` 误删数据。
+    external: true
+    name: docker_qldata
