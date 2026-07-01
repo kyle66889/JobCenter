@@ -41,5 +41,5 @@ __pycache__
 
 .deepseek/
 .claude/
-/.vs/
+.vs/
 *.sqlite-journal
