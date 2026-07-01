@@ -58,3 +58,25 @@ This project is indexed by GitNexus as **qinglong** (2740 symbols, 6583 relation
 - `docker compose build | tail` 会**吞掉退出码**（拿到的是 tail 的 0）。要判断成败用 `docker compose build > log 2>&1; echo "exit=$?"`。
 - `docker compose up -d` 不一定重建容器（可能显示 “Running” 沿用旧镜像）；换镜像后用 `--force-recreate`。
 - SQLite `.sync()` 不会给已存在的表加列；新增列要在 `back/loaders/db.ts` 的 `migrations` 数组里补 `alter table add column`。
+
+# 新机器部署 / 数据迁移（哪些进 git，哪些不进）
+
+**原则：代码 + 脚本进 git，秘密手动 copy，运行时数据靠幂等 seed 重建 —— 不提交数据库文件。**
+
+新机器上线流程：
+1. `git clone` / `git pull` —— 拿到全部代码 + `docker/data/scripts/` 里白名单的脚本
+2. 手动 copy `config.sh` 到 `docker/data/config/`（内含 `FBD_SECRET_KEY` + `FBD_PRD_DB_DSN_ENC` 等秘密）
+3. `docker compose up -d --build`
+
+启动后自动获得（均由代码 seed，见 `back/loaders/db.ts` + `back/services/auth-seed.ts`，全部幂等可重复跑）：
+- `admin/admin` 登录账号（青龙 `initData.ts` 自动建，**无初始化向导**）
+- RBAC `Admin` / `Viewer` 角色 + 首个 admin 用户
+- 3 条内置 FedEx/FBD cron 任务定义（按 `name` 查重）
+- FbdTask 示例一条
+
+**绝不进 git（`.gitignore` 已排除 `/docker/data/*`）：**
+- `config.sh` —— 密钥 + 加密 DSN，进 git = 泄露生产库凭证（红线）
+- `database.sqlite` —— 用户密码哈希 / 加密配置 / 二进制，靠上面的 seed 重建，不迁移
+- `log/` —— 运行时垃圾
+
+**要让某条数据"跟着 git 走"，写成 `db.ts` 里按唯一键查重的幂等 seed，不要提交 db 快照。** 新增 cron/角色/示例数据都照此模式。`.vs/`（VS 缓存）已全层级 ignore，勿再提交。
