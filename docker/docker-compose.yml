@@ -5,10 +5,25 @@ services:
       dockerfile: docker/Dockerfile.fbd # 多阶段：源码编译前端+后端，覆盖官方镜像并带 RBAC
     image: fbd-job-center:latest # 本地构建的镜像（基础版：whyour/qinglong:latest）
     volumes:
-      - ./data:/ql/data
+      # named volume：数据落在 WSL2 的 ext4 里，不走 Docker Desktop 的 grpcfuse 桥。
+      # 曾用 `./data:/ql/data` bind mount → grpcfuse 周期性卡死，SQLite 的 fs 调用
+      # 阻塞 libuv 线程池(仅4线程) → 整个 5700 服务僵住，只能重启机器。改 named volume 根治。
+      # 代价：无法从 Windows 直接看 /ql/data；config.sh 用 `docker cp` 注入，其余靠 seed 重建。
+      - qldata:/ql/data
     ports:
       - "5700:5700"
     environment:
       QlBaseUrl: '/fbdcenter/' # 部署路径非必须，以斜杠开头和结尾，比如 /test/
       TZ: America/Los_Angeles # 容器时区：太平洋时间（日志时间戳 + 定时任务触发时刻）
+    # 健康检查兜底：官方镜像的 curl 无超时，app 一慢就堆积孤儿 curl 进程（曾累积 250 个）。
+    # 加 --max-time 让每个探测最多 4s 自杀，避免进程堆积。
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf --noproxy '*' --max-time 4 http://localhost:${QlPort:-5700}/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 40s
     restart: unless-stopped
+
+volumes:
+  qldata:
