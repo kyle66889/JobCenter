@@ -41,6 +41,5 @@ __pycache__
 
 .deepseek/
 .claude/
-*.vsidx
-/.vs/slnx.sqlite
+/.vs/
 *.sqlite-journal
