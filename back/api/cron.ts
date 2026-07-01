@@ -434,6 +434,9 @@ export default (app: Router) => {
         log_path: Joi.string().optional().allow(null),
         last_running_time: Joi.number().optional().allow(null),
         last_execution_time: Joi.number().optional().allow(null),
+        // 官方镜像 shell 的 update_cron 会带 exit_code，后端接受但不使用；
+        // 不声明则 celebrate 因未知字段整体校验失败，导致任务状态无法回写、面板永远“运行中”。
+        exit_code: Joi.number().optional().allow(null),
       }),
     }),
     async (req: Request, res: Response, next: NextFunction) => {
