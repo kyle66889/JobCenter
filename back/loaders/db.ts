@@ -1,6 +1,6 @@
 import Logger from './logger';
 import { EnvModel } from '../data/env';
-import { CrontabModel } from '../data/cron';
+import { CrontabModel, CrontabStatus } from '../data/cron';
 import { DependenceModel } from '../data/dependence';
 import { AppModel } from '../data/open';
 import { SystemModel } from '../data/system';
@@ -85,6 +85,42 @@ export default async () => {
         operator: '',
         timestamp: new Date().toString(),
       } as any);
+    }
+
+    // 内置定时任务：按 name 幂等 seed，新机器部署后自动出现（不提交数据库文件）
+    // 注：脚本随 git 白名单同步，config.sh 由部署者手动 copy
+    const seedCrons = [
+      {
+        name: 'FedEx Fuel Surcharge',
+        command: 'task fedex_fuel_surcharge.py',
+        schedule: '0 8 * * *',
+        notify_emails: 'kyle@fbdgroups.com;nana@fbdgroups.com;lennon@fbdgroups.com',
+      },
+      {
+        name: 'FedEx Zone Chart',
+        command: 'task fedex_zone_chart.py',
+        schedule: '0 8 7 * *',
+        notify_emails: 'kyle@fbdgroups.com',
+      },
+      {
+        name: 'FedEx Surcharge 检查',
+        command: 'task fbd_surcharge_check.py',
+        schedule: '0 8 * * 1',
+        notify_emails: 'kyle@fbdgroups.com',
+      },
+    ];
+    for (const c of seedCrons) {
+      const exist = await CrontabModel.findOne({ where: { name: c.name } });
+      if (!exist) {
+        await CrontabModel.create({
+          ...c,
+          status: CrontabStatus.idle,
+          isSystem: 0,
+          isDisabled: 0,
+          timestamp: new Date().toString(),
+        } as any);
+        Logger.info('✌️ Cron seed: 已创建内置任务 [%s]', c.name);
+      }
     }
 
     const seedRbac = (await import('../services/auth-seed')).default;
